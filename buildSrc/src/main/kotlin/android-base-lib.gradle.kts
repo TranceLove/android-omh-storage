@@ -7,6 +7,10 @@ plugins {
     id("signing").apply(false)
 }
 
+kotlin {
+    jvmToolchain(17)
+}
+
 val useMavenLocal = project.rootProject.extra["useMavenLocal"] as Boolean
 
 if (!useMavenLocal) {
@@ -45,6 +49,10 @@ android {
             isReturnDefaultValues = true
             isIncludeAndroidResources = true
         }
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 }
 
@@ -117,13 +125,13 @@ fun MavenPublication.setupPublication() {
 if (useMavenLocal) {
     publishing {
         publications {
-            register<MavenPublication>("release") {
+            register<MavenPublication>("debug") {
                 group = groupProperty
                 artifactId = artifactId
                 version = versionProperty
 
                 afterEvaluate {
-                    from(components["release"])
+                    from(components["debug"])
                 }
             }
         }

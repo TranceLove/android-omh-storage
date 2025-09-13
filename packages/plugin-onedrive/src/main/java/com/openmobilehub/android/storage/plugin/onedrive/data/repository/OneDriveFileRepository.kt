@@ -19,6 +19,7 @@ package com.openmobilehub.android.storage.plugin.onedrive.data.repository
 import com.microsoft.graph.drives.item.items.item.invite.InvitePostRequestBody
 import com.microsoft.graph.models.DriveItem
 import com.microsoft.kiota.ApiException
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhCreatePermission
 import com.openmobilehub.android.storage.core.model.OmhFileVersion
 import com.openmobilehub.android.storage.core.model.OmhPermission
@@ -84,6 +85,29 @@ internal class OneDriveFileRepository(
         inputStream.toByteArrayOutputStream()
     } catch (exception: ApiException) {
         throw ExceptionMapper.toOmhApiException(exception)
+    }
+
+    fun getFileThumbnail(
+        fileId: String,
+        size: ThumbnailSize = ThumbnailSize.MEDIUM
+    ): ByteArrayOutputStream = try {
+        val oneDriveSize = mapThumbnailSizeToOneDriveSize(size)
+        val inputStream = apiService.getThumbnails(fileId, oneDriveSize)
+            ?: throw OmhStorageException.ApiException(message = "No thumbnail available for this file")
+
+        inputStream.toByteArrayOutputStream()
+    } catch (exception: ApiException) {
+        throw ExceptionMapper.toOmhApiException(exception)
+    }
+
+    private fun mapThumbnailSizeToOneDriveSize(size: ThumbnailSize): String {
+        return when (size) {
+            ThumbnailSize.VERY_SMALL -> "small" // 16 -> small (closest available)
+            ThumbnailSize.SMALL -> "small" // 32 -> small
+            ThumbnailSize.MEDIUM -> "medium" // 64 -> medium
+            ThumbnailSize.LARGE -> "large" // 128 -> large
+            ThumbnailSize.VERY_LARGE -> "large" // 256 -> large (OneDrive max)
+        }
     }
 
     fun getFileVersions(fileId: String): List<OmhFileVersion> = try {

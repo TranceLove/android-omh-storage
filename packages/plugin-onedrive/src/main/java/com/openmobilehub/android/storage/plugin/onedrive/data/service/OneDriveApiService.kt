@@ -205,6 +205,32 @@ internal class OneDriveApiService(internal val apiClient: OneDriveApiClient) {
             .byDriveItemId("root:$path").get()
     }
 
+    fun getThumbnails(fileId: String, size: String = "large"): InputStream? {
+        // Get thumbnail metadata first
+        val thumbnailSet = apiClient.graphServiceClient.drives()
+            .byDriveId(driveId)
+            .items()
+            .byDriveItemId(fileId)
+            .thumbnails()
+            .byThumbnailSetId("0")
+            .get()
+
+        // Extract the appropriate thumbnail URL based on size
+        val thumbnailUrl = when (size) {
+            "small" -> thumbnailSet?.small?.url
+            "medium" -> thumbnailSet?.medium?.url
+            "large" -> thumbnailSet?.large?.url
+            else -> thumbnailSet?.large?.url
+        }
+
+        // Download thumbnail content from URL if available
+        return thumbnailUrl?.let { url ->
+            // Use the HTTP client to download from the URL
+            // This is a simplified approach - in practice you'd want proper HTTP handling
+            java.net.URL(url).openStream()
+        }
+    }
+
     @VisibleForTesting
     internal class DriveIdCache(private val apiClient: OneDriveApiClient) {
         private var cachedDriveId: String? = null

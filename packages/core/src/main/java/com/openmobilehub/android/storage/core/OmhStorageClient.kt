@@ -173,6 +173,20 @@ abstract class OmhStorageClient protected constructor(
     abstract suspend fun exportFile(fileId: String, exportedMimeType: String): ByteArrayOutputStream
 
     /**
+     * This method returns the file thumbnail of file with given id
+     *
+     * @param fileId The id for the file to get the thumbnail of
+     * @param size The size of the thumbnail to be retrieved as defined in [ThumbnailSize], default is MEDIUM
+     *
+     * @return A ByteArrayOutputStream with the content of the thumbnail
+     */
+    abstract suspend fun getFileThumbnail(
+        fileId: String,
+        size:
+            ThumbnailSize = ThumbnailSize.MEDIUM
+    ): ByteArrayOutputStream
+
+    /**
      * This method update a remote file with the content of a local file
      *
      * @param localFileToUpload The local file to be uploaded

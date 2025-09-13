@@ -3,6 +3,7 @@ package com.openmobilehub.android.storage.plugin.dropbox.restful.data.repository
 import android.webkit.MimeTypeMap
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhCreatePermission
 import com.openmobilehub.android.storage.core.model.OmhPermissionRecipient
 import com.openmobilehub.android.storage.core.model.OmhPermissionRole
@@ -21,6 +22,7 @@ import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ExportFileRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.FinishUploadSessionRequestBody
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.GetFileRevisionsRequest
+import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.GetThumbnailRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFileSharedMembersRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFolderRequestBody
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFolderSharedMembersRequest
@@ -2585,6 +2587,404 @@ class DropboxRestfulFileRepositoryTest {
                         assertEquals("dropbox_id", req.members.first().member.tag)
                         assertEquals(TEST_PERMISSION_GROUP_ID, req.members.first().member.userId)
                         assertEquals(OmhPermissionRole.WRITER, req.members.first().accessLevel)
+                    }
+                )
+            }
+        }
+
+    // Thumbnail Tests
+
+    @Test
+    fun `given a file id, when getFileThumbnail is success, then a ByteArrayOutputStream is returned`() =
+        runTest {
+            val testFileMetadataJson = objectMapper.writeValueAsString(TestFileMetadata.testCreatedFile)
+            val expectedThumbnailContent = "thumbnail_image_data".toByteArray()
+
+            coEvery {
+                dropboxApiService.getNodeMetaData(any())
+            } returns Response.success(
+                testFileMetadataJson.toResponseBody("application/json".toMediaTypeOrNull())
+            )
+
+            coEvery {
+                dropboxContentApiService.getFileThumbnail(any())
+            } returns Response.success(
+                expectedThumbnailContent.toResponseBody("image/jpeg".toMediaTypeOrNull())
+            )
+
+            val result = fileRepositoryImpl.getFileThumbnail("id:testFile1", ThumbnailSize.MEDIUM)
+
+            assertNotNull(result)
+            coVerify {
+                dropboxApiService.getNodeMetaData(
+                    eq(NodeMetadataRequest("id:testFile1"))
+                )
+            }
+            coVerify {
+                dropboxContentApiService.getFileThumbnail(
+                    match {
+                        val request = objectMapper.readValue(
+                            it,
+                            GetThumbnailRequest::class.java
+                        )
+                        request.path == "/test file.txt" && request.size == "w64h64"
+                    }
+                )
+            }
+        }
+
+    @Test
+    fun `given a file id with different sizes, when getFileThumbnail is success, then correct size is used`() =
+        runTest {
+            val testFileMetadataJson = objectMapper.writeValueAsString(TestFileMetadata.testCreatedFile)
+            val expectedThumbnailContent = "thumbnail_image_data".toByteArray()
+
+            coEvery {
+                dropboxApiService.getNodeMetaData(any())
+            } returns Response.success(
+                testFileMetadataJson.toResponseBody("application/json".toMediaTypeOrNull())
+            )
+
+            coEvery {
+                dropboxContentApiService.getFileThumbnail(any())
+            } returns Response.success(
+                expectedThumbnailContent.toResponseBody("image/jpeg".toMediaTypeOrNull())
+            )
+
+            val result = fileRepositoryImpl.getFileThumbnail("id:testFile1", ThumbnailSize.LARGE)
+
+            assertNotNull(result)
+            coVerify {
+                dropboxApiService.getNodeMetaData(
+                    eq(NodeMetadataRequest("id:testFile1"))
+                )
+            }
+            coVerify {
+                dropboxContentApiService.getFileThumbnail(
+                    match {
+                        val request = objectMapper.readValue(
+                            it,
+                            GetThumbnailRequest::class.java
+                        )
+                        request.path == "/test file.txt" && request.size == "w128h128"
+                    }
+                )
+            }
+        }
+
+    @Test
+    fun `given a file id with very small size, when getFileThumbnail is success, then correct size is used`() =
+        runTest {
+            val testFileMetadataJson = objectMapper.writeValueAsString(TestFileMetadata.testCreatedFile)
+            val expectedThumbnailContent = "thumbnail_image_data".toByteArray()
+
+            coEvery {
+                dropboxApiService.getNodeMetaData(any())
+            } returns Response.success(
+                testFileMetadataJson.toResponseBody("application/json".toMediaTypeOrNull())
+            )
+
+            coEvery {
+                dropboxContentApiService.getFileThumbnail(any())
+            } returns Response.success(
+                expectedThumbnailContent.toResponseBody("image/jpeg".toMediaTypeOrNull())
+            )
+
+            val result = fileRepositoryImpl.getFileThumbnail("id:testFile1", ThumbnailSize.VERY_SMALL)
+
+            assertNotNull(result)
+            coVerify {
+                dropboxApiService.getNodeMetaData(
+                    eq(NodeMetadataRequest("id:testFile1"))
+                )
+            }
+            coVerify {
+                dropboxContentApiService.getFileThumbnail(
+                    match {
+                        val request = objectMapper.readValue(
+                            it,
+                            GetThumbnailRequest::class.java
+                        )
+                        request.path == "/test file.txt" && request.size == "w32h32"
+                    }
+                )
+            }
+        }
+
+    @Test
+    fun `given a file id with very large size, when getFileThumbnail is success, then correct size is used`() =
+        runTest {
+            val testFileMetadataJson = objectMapper.writeValueAsString(TestFileMetadata.testCreatedFile)
+            val expectedThumbnailContent = "thumbnail_image_data".toByteArray()
+
+            coEvery {
+                dropboxApiService.getNodeMetaData(any())
+            } returns Response.success(
+                testFileMetadataJson.toResponseBody("application/json".toMediaTypeOrNull())
+            )
+
+            coEvery {
+                dropboxContentApiService.getFileThumbnail(any())
+            } returns Response.success(
+                expectedThumbnailContent.toResponseBody("image/jpeg".toMediaTypeOrNull())
+            )
+
+            val result = fileRepositoryImpl.getFileThumbnail("id:testFile1", ThumbnailSize.VERY_LARGE)
+
+            assertNotNull(result)
+            coVerify {
+                dropboxApiService.getNodeMetaData(
+                    eq(NodeMetadataRequest("id:testFile1"))
+                )
+            }
+            coVerify {
+                dropboxContentApiService.getFileThumbnail(
+                    match {
+                        val request = objectMapper.readValue(
+                            it,
+                            GetThumbnailRequest::class.java
+                        )
+                        request.path == "/test file.txt" && request.size == "w256h256"
+                    }
+                )
+            }
+        }
+
+    @Test
+    fun `given a file id with small size, when getFileThumbnail is success, then correct size parameter is used`() =
+        runTest {
+            val testFileMetadataJson = objectMapper.writeValueAsString(TestFileMetadata.testCreatedFile)
+            val expectedThumbnailContent = "thumbnail_image_data".toByteArray()
+
+            coEvery {
+                dropboxApiService.getNodeMetaData(any())
+            } returns Response.success(
+                testFileMetadataJson.toResponseBody("application/json".toMediaTypeOrNull())
+            )
+
+            coEvery {
+                dropboxContentApiService.getFileThumbnail(any())
+            } returns Response.success(
+                expectedThumbnailContent.toResponseBody("image/jpeg".toMediaTypeOrNull())
+            )
+
+            val result = fileRepositoryImpl.getFileThumbnail("id:testFile1", ThumbnailSize.SMALL)
+
+            assertNotNull(result)
+            coVerify {
+                dropboxApiService.getNodeMetaData(
+                    eq(NodeMetadataRequest("id:testFile1"))
+                )
+            }
+            coVerify {
+                dropboxContentApiService.getFileThumbnail(
+                    match {
+                        val request = objectMapper.readValue(
+                            it,
+                            GetThumbnailRequest::class.java
+                        )
+                        request.path == "/test file.txt" && request.size == "w32h32"
+                    }
+                )
+            }
+        }
+
+    @Test
+    fun `given getNodeMetaData fails, when getFileThumbnail is called, then throws ApiException`() =
+        runTest {
+            coEvery {
+                dropboxApiService.getNodeMetaData(any())
+            } returns Response.error(
+                404,
+                "File not found".toResponseBody("text/plain".toMediaTypeOrNull())
+            )
+
+            try {
+                fileRepositoryImpl.getFileThumbnail("id:nonExistentFile", ThumbnailSize.MEDIUM)
+                fail("Expected ApiException to be thrown")
+            } catch (expected: OmhStorageException.ApiException) {}
+
+            coVerify {
+                dropboxApiService.getNodeMetaData(
+                    eq(NodeMetadataRequest("id:nonExistentFile"))
+                )
+            }
+            coVerify(exactly = 0) {
+                dropboxContentApiService.getFileThumbnail(any())
+            }
+        }
+
+    @Test
+    fun `given file metadata is null, when getFileThumbnail is called, then throws ApiException with 404`() =
+        runTest {
+            coEvery {
+                dropboxApiService.getNodeMetaData(any())
+            } returns Response.success(null)
+
+            try {
+                fileRepositoryImpl.getFileThumbnail("id:nullMetadata", ThumbnailSize.MEDIUM)
+                fail("Expected ApiException to be thrown")
+            } catch (expected: OmhStorageException.ApiException) {
+                assertEquals(404, expected.statusCode)
+                assertEquals("File not found", expected.message)
+            }
+
+            coVerify {
+                dropboxApiService.getNodeMetaData(
+                    eq(NodeMetadataRequest("id:nullMetadata"))
+                )
+            }
+            coVerify(exactly = 0) {
+                dropboxContentApiService.getFileThumbnail(any())
+            }
+        }
+
+    @Test
+    fun `given getFileThumbnail API call fails, when getFileThumbnail is called, then throws ApiException`() =
+        runTest {
+            val testFileMetadataJson = objectMapper.writeValueAsString(TestFileMetadata.testCreatedFile)
+
+            coEvery {
+                dropboxApiService.getNodeMetaData(any())
+            } returns Response.success(
+                testFileMetadataJson.toResponseBody("application/json".toMediaTypeOrNull())
+            )
+
+            coEvery {
+                dropboxContentApiService.getFileThumbnail(any())
+            } returns Response.error(
+                500,
+                "Thumbnail generation failed".toResponseBody("text/plain".toMediaTypeOrNull())
+            )
+
+            try {
+                fileRepositoryImpl.getFileThumbnail("id:testFile1", ThumbnailSize.MEDIUM)
+                fail("Expected ApiException to be thrown")
+            } catch (expected: OmhStorageException.ApiException) {}
+
+            coVerify {
+                dropboxApiService.getNodeMetaData(
+                    eq(NodeMetadataRequest("id:testFile1"))
+                )
+            }
+            coVerify {
+                dropboxContentApiService.getFileThumbnail(any())
+            }
+        }
+
+    @Test
+    fun `given thumbnail not available, when getFileThumbnail is called, then throws ApiException`() =
+        runTest {
+            val testFileMetadataJson = objectMapper.writeValueAsString(TestFileMetadata.testCreatedFile)
+
+            coEvery {
+                dropboxApiService.getNodeMetaData(any())
+            } returns Response.success(
+                testFileMetadataJson.toResponseBody("application/json".toMediaTypeOrNull())
+            )
+
+            coEvery {
+                dropboxContentApiService.getFileThumbnail(any())
+            } returns Response.error(
+                415,
+                "Thumbnail not available for this file type".toResponseBody("text/plain".toMediaTypeOrNull())
+            )
+
+            try {
+                fileRepositoryImpl.getFileThumbnail("id:testFile1", ThumbnailSize.MEDIUM)
+                fail("Expected ApiException to be thrown")
+            } catch (expected: OmhStorageException.ApiException) {}
+
+            coVerify {
+                dropboxApiService.getNodeMetaData(
+                    eq(NodeMetadataRequest("id:testFile1"))
+                )
+            }
+            coVerify {
+                dropboxContentApiService.getFileThumbnail(
+                    match {
+                        val request = objectMapper.readValue(
+                            it,
+                            GetThumbnailRequest::class.java
+                        )
+                        request.path == "/test file.txt" && request.size == "w64h64"
+                    }
+                )
+            }
+        }
+
+    @Test
+    fun `given default size parameter, when getFileThumbnail is called, then uses MEDIUM size`() =
+        runTest {
+            val testFileMetadataJson = objectMapper.writeValueAsString(TestFileMetadata.testCreatedFile)
+            val expectedThumbnailContent = "thumbnail_image_data".toByteArray()
+
+            coEvery {
+                dropboxApiService.getNodeMetaData(any())
+            } returns Response.success(
+                testFileMetadataJson.toResponseBody("application/json".toMediaTypeOrNull())
+            )
+
+            coEvery {
+                dropboxContentApiService.getFileThumbnail(any())
+            } returns Response.success(
+                expectedThumbnailContent.toResponseBody("image/jpeg".toMediaTypeOrNull())
+            )
+
+            // Call without explicit size parameter to test default
+            val result = fileRepositoryImpl.getFileThumbnail("id:testFile1")
+
+            assertNotNull(result)
+            coVerify {
+                dropboxApiService.getNodeMetaData(
+                    eq(NodeMetadataRequest("id:testFile1"))
+                )
+            }
+            coVerify {
+                dropboxContentApiService.getFileThumbnail(
+                    match {
+                        val request = objectMapper.readValue(
+                            it,
+                            GetThumbnailRequest::class.java
+                        )
+                        request.path == "/test file.txt" && request.size == "w64h64" // Should use MEDIUM (64x64)
+                    }
+                )
+            }
+        }
+
+    @Test
+    fun `given valid request, when getFileThumbnail is success, then request contains correct format and mode`() =
+        runTest {
+            val testFileMetadataJson = objectMapper.writeValueAsString(TestFileMetadata.testCreatedFile)
+            val expectedThumbnailContent = "thumbnail_image_data".toByteArray()
+
+            coEvery {
+                dropboxApiService.getNodeMetaData(any())
+            } returns Response.success(
+                testFileMetadataJson.toResponseBody("application/json".toMediaTypeOrNull())
+            )
+
+            coEvery {
+                dropboxContentApiService.getFileThumbnail(any())
+            } returns Response.success(
+                expectedThumbnailContent.toResponseBody("image/jpeg".toMediaTypeOrNull())
+            )
+
+            val result = fileRepositoryImpl.getFileThumbnail("id:testFile1", ThumbnailSize.MEDIUM)
+
+            assertNotNull(result)
+            coVerify {
+                dropboxContentApiService.getFileThumbnail(
+                    match {
+                        val request = objectMapper.readValue(
+                            it,
+                            GetThumbnailRequest::class.java
+                        )
+                        request.path == "/test file.txt" &&
+                            request.size == "w64h64" &&
+                            request.format == "jpeg" &&
+                            request.mode == "strict"
                     }
                 )
             }

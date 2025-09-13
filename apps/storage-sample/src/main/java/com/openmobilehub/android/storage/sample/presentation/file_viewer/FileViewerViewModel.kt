@@ -60,6 +60,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import javax.net.ssl.HttpsURLConnection.HTTP_UNAUTHORIZED
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 
 @Suppress("TooManyFunctions")
 @OptIn(FlowPreview::class)
@@ -111,6 +113,10 @@ class FileViewerViewModel @Inject constructor(
     private var quotaUsed: MutableStateFlow<Long> = MutableStateFlow(0L)
 
     val folderSize: MutableLiveData<Long> = MutableLiveData(-1L)
+
+    // Cache of fileId -> thumbnail bytes for current folder/search results
+    private val _thumbnails: MutableStateFlow<Map<String, ByteArray>> = MutableStateFlow(emptyMap())
+    val thumbnails: StateFlow<Map<String, ByteArray>> = _thumbnails
 
     private val isPermanentlyDeleteSupported: Boolean =
         when (storageAuthProvider) {
@@ -168,6 +174,7 @@ class FileViewerViewModel @Inject constructor(
                             it.quotaUsed
                         )
                     )
+                    prefetchThumbnails(it.files)
                 }
                 .flowOn(Dispatchers.IO)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), FileViewerViewState.Content(
@@ -585,6 +592,47 @@ class FileViewerViewModel @Inject constructor(
 
         fun peek(): T {
             return _flow.value
+        }
+    }
+
+    private fun prefetchThumbnails(files: List<OmhStorageEntity>) {
+        val visibleIds = files
+            .asSequence()
+            .filterIsInstance<OmhStorageEntity.OmhFile>()
+            .map { it.id }
+            .filter { it.isNotBlank() }
+            .toSet()
+
+        val toLoad = visibleIds.filter { !_thumbnails.value.containsKey(it) }
+        if (toLoad.isEmpty()) {
+            // Trim cache to current visible set
+            _thumbnails.value = _thumbnails.value.filterKeys { it in visibleIds }
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val current = _thumbnails.value
+            val results = toLoad.map { id ->
+                async {
+                    try {
+                        omhStorageClient.getFileThumbnail(id).toByteArray()
+                    } catch (e: Exception) {
+                        // Ignore thumbnail fetch errors except unauthorized which is handled elsewhere
+                        null
+                    }
+                }
+            }.awaitAll()
+
+            val newEntries = buildMap<String, ByteArray> {
+                toLoad.zip(results).forEach { (id, bytes) ->
+                    if (bytes != null) put(id, bytes)
+                }
+            }
+
+            val trimmed = current.filterKeys { it in visibleIds }
+            if (newEntries.isNotEmpty() || trimmed.size != current.size) {
+                _thumbnails.value = trimmed + newEntries
+            }
         }
     }
 }

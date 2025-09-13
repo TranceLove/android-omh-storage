@@ -167,6 +167,15 @@ class FileViewerFragment :
                 }
             }
         }
+
+        // Observe thumbnail updates and feed into adapter
+        lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.thumbnails.collect { map ->
+                    filesAdapter?.updateThumbnails(map)
+                }
+            }
+        }
     }
 
     private fun setupToolbar() {

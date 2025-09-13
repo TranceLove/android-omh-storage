@@ -19,6 +19,7 @@ package com.openmobilehub.android.storage.plugin.googledrive.nongms
 import android.webkit.MimeTypeMap
 import com.openmobilehub.android.auth.core.OmhAuthClient
 import com.openmobilehub.android.storage.core.OmhStorageClient
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhCreatePermission
 import com.openmobilehub.android.storage.core.model.OmhFileVersion
 import com.openmobilehub.android.storage.core.model.OmhPermission
@@ -103,6 +104,10 @@ internal class GoogleDriveNonGmsOmhStorageClient private constructor(
         exportedMimeType: String
     ): ByteArrayOutputStream {
         return fileRepository.exportFile(fileId, exportedMimeType)
+    }
+
+    override suspend fun getFileThumbnail(fileId: String, size: ThumbnailSize): ByteArrayOutputStream {
+        return fileRepository.getFileThumbnail(fileId, size)
     }
 
     override suspend fun updateFile(

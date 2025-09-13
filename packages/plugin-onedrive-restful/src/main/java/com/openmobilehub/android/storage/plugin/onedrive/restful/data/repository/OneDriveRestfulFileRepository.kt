@@ -1,6 +1,7 @@
 package com.openmobilehub.android.storage.plugin.onedrive.restful.data.repository
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhCreatePermission
 import com.openmobilehub.android.storage.core.model.OmhFileVersion
 import com.openmobilehub.android.storage.core.model.OmhIdentity
@@ -207,6 +208,79 @@ internal class OneDriveRestfulFileRepository(
                     .build(),
             ).execute()
         return response.body?.toByteArrayOutputStream()!!
+    }
+
+    @Suppress("ThrowsCount")
+    suspend fun getFileThumbnail(
+        fileId: String,
+        size: ThumbnailSize = ThumbnailSize.MEDIUM,
+    ): ByteArrayOutputStream {
+        // First, get the available thumbnails for the item
+        val thumbnailsResponse = apiService.getItemThumbnails(fileId)
+
+        if (thumbnailsResponse.isNotSuccessful) {
+            throw thumbnailsResponse.toApiException()
+        }
+
+        val responseBody = thumbnailsResponse.body()?.string()
+            ?: throw OmhStorageException.ApiException(message = "Empty response body")
+
+        val jsonObject = objectMapper.readTree(responseBody)
+        val valueArray = jsonObject.get("value")
+
+        if (valueArray == null || valueArray.isEmpty) {
+            throw OmhStorageException.ApiException(
+                message = "No thumbnails available for this file"
+            )
+        }
+
+        // OneDrive typically returns thumbnails with id "0" for the first thumbnail set
+        val thumbnailSet = valueArray.get(0)
+        val thumbnailSize = mapThumbnailSizeToOneDriveSize(size)
+
+        // Try to find the requested size in the thumbnail set
+        val thumbnailNode = thumbnailSet.get(thumbnailSize)
+            ?: thumbnailSet.get("large") // Fallback to large if requested size not available
+            ?: thumbnailSet.get("medium") // Fallback to medium
+            ?: thumbnailSet.get("small") // Final fallback to small
+
+        if (thumbnailNode == null) {
+            throw OmhStorageException.ApiException(
+                message = "No suitable thumbnail size available for this file"
+            )
+        }
+
+        val thumbnailUrl = thumbnailNode.get("url")?.asText()
+            ?: throw OmhStorageException.ApiException(
+                message = "Thumbnail URL not found"
+            )
+
+        // Download the thumbnail from the URL
+        val response = httpClient.newCall(
+            Request.Builder()
+                .get()
+                .url(thumbnailUrl)
+                .build()
+        ).execute()
+
+        return response.body?.toByteArrayOutputStream()
+            ?: throw OmhStorageException.ApiException(
+                message = "Failed to download thumbnail"
+            )
+    }
+
+    /**
+     * Maps ThumbnailSize enum to OneDrive thumbnail size names.
+     * OneDrive supports: small, medium, large
+     */
+    private fun mapThumbnailSizeToOneDriveSize(size: ThumbnailSize): String {
+        return when (size) {
+            ThumbnailSize.VERY_SMALL -> "small"
+            ThumbnailSize.SMALL -> "small"
+            ThumbnailSize.MEDIUM -> "medium"
+            ThumbnailSize.LARGE -> "large"
+            ThumbnailSize.VERY_LARGE -> "large"
+        }
     }
 
     suspend fun getNodeMetaDataById(id: String): DriveItem? {

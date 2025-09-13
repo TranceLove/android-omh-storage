@@ -33,6 +33,7 @@ internal class GoogleDriveApiService(internal val apiProvider: GoogleDriveApiPro
         private const val FIELDS_VALUE = "files($QUERY_REQUESTED_FIELDS)"
         private const val ALL_FIELDS = "*"
         private const val WEB_URL_FIELD = "webViewLink"
+        private const val THUMBNAIL_LINK_FIELD = "thumbnailLink"
     }
 
     fun getFilesList(parentId: String): Drive.Files.List = apiProvider
@@ -175,6 +176,14 @@ internal class GoogleDriveApiService(internal val apiProvider: GoogleDriveApiPro
         .get(fileId)
         .apply {
             fields = WEB_URL_FIELD
+        }
+
+    fun getThumbnailLink(fileId: String): Drive.Files.Get = apiProvider
+        .googleDriveApiService
+        .files()
+        .get(fileId)
+        .apply {
+            fields = THUMBNAIL_LINK_FIELD
         }
 
     fun about(queryFields: String? = null): Drive.About.Get =

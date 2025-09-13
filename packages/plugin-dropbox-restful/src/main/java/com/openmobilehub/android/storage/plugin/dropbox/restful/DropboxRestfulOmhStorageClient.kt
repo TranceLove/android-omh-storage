@@ -2,6 +2,7 @@ package com.openmobilehub.android.storage.plugin.dropbox.restful
 
 import com.openmobilehub.android.auth.core.OmhAuthClient
 import com.openmobilehub.android.storage.core.OmhStorageClient
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhCreatePermission
 import com.openmobilehub.android.storage.core.model.OmhFileVersion
 import com.openmobilehub.android.storage.core.model.OmhPermission
@@ -80,6 +81,10 @@ internal class DropboxRestfulOmhStorageClient(
     ): ByteArrayOutputStream {
         // return fileRepository.exportFile(fileId, exportedMimeType)
         throw UnsupportedOperationException("Exporting files is not supported in Dropbox")
+    }
+
+    override suspend fun getFileThumbnail(fileId: String, size: ThumbnailSize): ByteArrayOutputStream {
+        return fileRepository.getFileThumbnail(fileId, size)
     }
 
     override suspend fun updateFile(localFileToUpload: File, fileId: String): OmhStorageEntity? {

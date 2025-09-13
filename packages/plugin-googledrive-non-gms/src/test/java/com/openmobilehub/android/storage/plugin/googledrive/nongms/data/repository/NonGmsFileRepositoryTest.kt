@@ -19,6 +19,7 @@
 package com.openmobilehub.android.storage.plugin.googledrive.nongms.data.repository
 
 import android.webkit.MimeTypeMap
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhPermissionRole
 import com.openmobilehub.android.storage.core.model.OmhStorageException
 import com.openmobilehub.android.storage.core.model.OmhStorageMetadata
@@ -1135,5 +1136,181 @@ internal class NonGmsFileRepositoryTest {
             val result = fileRepositoryImpl.resolvePath("/RSX/1/2/3/testfile.jpg")
             assertNotNull(result)
             assertEquals("id of file /RSX/1/2/3/testfile.jpg", result?.id)
+        }
+
+    // Thumbnail Tests
+
+    @Test
+    fun `given a file id, when getFileThumbnail is success, then a ByteArrayOutputStream is returned`() =
+        runTest {
+            val expectedResult = ByteArrayOutputStream()
+            val thumbnailUrl = "https://drive.google.com/thumbnail?id=123&sz=s220"
+            val sizedThumbnailUrl = "https://drive.google.com/thumbnail?id=123&sz=s128"
+            val thumbnailResponseBody = """{"thumbnailLink": "$thumbnailUrl"}"""
+
+            mockkStatic(ResponseBody?::toByteArrayOutputStream)
+            every { responseBody.toByteArrayOutputStream() } returns expectedResult
+            every { responseBody.string() } returns thumbnailResponseBody
+
+            coEvery {
+                googleStorageApiService.getThumbnailLink(TEST_FILE_ID)
+            } returns Response.success(responseBody)
+
+            coEvery {
+                googleStorageApiService.downloadThumbnail(sizedThumbnailUrl)
+            } returns Response.success(responseBody)
+
+            val result = fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+
+            assertEquals(expectedResult, result)
+            coVerify { googleStorageApiService.getThumbnailLink(TEST_FILE_ID) }
+            coVerify { googleStorageApiService.downloadThumbnail(sizedThumbnailUrl) }
+        }
+
+    @Test
+    fun `given a file id with different thumbnail sizes, when getFileThumbnail is success, then correct size parameter is used`() =
+        runTest {
+            val expectedResult = ByteArrayOutputStream()
+            val thumbnailUrl = "https://drive.google.com/thumbnail?id=123&sz=s220"
+            val sizedThumbnailUrl = "https://drive.google.com/thumbnail?id=123&sz=s256"
+            val thumbnailResponseBody = """{"thumbnailLink": "$thumbnailUrl"}"""
+
+            mockkStatic(ResponseBody?::toByteArrayOutputStream)
+            every { responseBody.toByteArrayOutputStream() } returns expectedResult
+            every { responseBody.string() } returns thumbnailResponseBody
+
+            coEvery {
+                googleStorageApiService.getThumbnailLink(TEST_FILE_ID)
+            } returns Response.success(responseBody)
+
+            coEvery {
+                googleStorageApiService.downloadThumbnail(sizedThumbnailUrl)
+            } returns Response.success(responseBody)
+
+            val result = fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.LARGE)
+
+            assertEquals(expectedResult, result)
+            coVerify { googleStorageApiService.getThumbnailLink(TEST_FILE_ID) }
+            coVerify { googleStorageApiService.downloadThumbnail(sizedThumbnailUrl) }
+        }
+
+    @Test
+    fun `given a file id with very small size, when getFileThumbnail is success, then correct size parameter is used`() =
+        runTest {
+            val expectedResult = ByteArrayOutputStream()
+            val thumbnailUrl = "https://drive.google.com/thumbnail?id=123&sz=s220"
+            val sizedThumbnailUrl = "https://drive.google.com/thumbnail?id=123&sz=s32"
+            val thumbnailResponseBody = """{"thumbnailLink": "$thumbnailUrl"}"""
+
+            mockkStatic(ResponseBody?::toByteArrayOutputStream)
+            every { responseBody.toByteArrayOutputStream() } returns expectedResult
+            every { responseBody.string() } returns thumbnailResponseBody
+
+            coEvery {
+                googleStorageApiService.getThumbnailLink(TEST_FILE_ID)
+            } returns Response.success(responseBody)
+
+            coEvery {
+                googleStorageApiService.downloadThumbnail(sizedThumbnailUrl)
+            } returns Response.success(responseBody)
+
+            val result = fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.VERY_SMALL)
+
+            assertEquals(expectedResult, result)
+            coVerify { googleStorageApiService.getThumbnailLink(TEST_FILE_ID) }
+            coVerify { googleStorageApiService.downloadThumbnail(sizedThumbnailUrl) }
+        }
+
+    @Test
+    fun `given a file id with url without size parameter, when getFileThumbnail is success, then size parameter is appended`() =
+        runTest {
+            val expectedResult = ByteArrayOutputStream()
+            val thumbnailUrl = "https://drive.google.com/thumbnail?id=123"
+            val sizedThumbnailUrl = "https://drive.google.com/thumbnail?id=123=s128"
+            val thumbnailResponseBody = """{"thumbnailLink": "$thumbnailUrl"}"""
+
+            mockkStatic(ResponseBody?::toByteArrayOutputStream)
+            every { responseBody.toByteArrayOutputStream() } returns expectedResult
+            every { responseBody.string() } returns thumbnailResponseBody
+
+            coEvery {
+                googleStorageApiService.getThumbnailLink(TEST_FILE_ID)
+            } returns Response.success(responseBody)
+
+            coEvery {
+                googleStorageApiService.downloadThumbnail(sizedThumbnailUrl)
+            } returns Response.success(responseBody)
+
+            val result = fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+
+            assertEquals(expectedResult, result)
+            coVerify { googleStorageApiService.getThumbnailLink(TEST_FILE_ID) }
+            coVerify { googleStorageApiService.downloadThumbnail(sizedThumbnailUrl) }
+        }
+
+    @Test(expected = OmhStorageException.ApiException::class)
+    fun `given a file id, when getThumbnailLink fails, then ApiException is thrown`() =
+        runTest {
+            coEvery {
+                googleStorageApiService.getThumbnailLink(TEST_FILE_ID)
+            } returns Response.error(404, responseBody)
+
+            fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+        }
+
+    @Test(expected = OmhStorageException.ApiException::class)
+    fun `given a file id, when getThumbnailLink returns empty response body, then ApiException is thrown`() =
+        runTest {
+            coEvery {
+                googleStorageApiService.getThumbnailLink(TEST_FILE_ID)
+            } returns Response.success(null)
+
+            fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+        }
+
+    @Test(expected = OmhStorageException.ApiException::class)
+    fun `given a file id, when response has no thumbnailLink, then ApiException is thrown`() =
+        runTest {
+            val thumbnailResponseBody = """{"id": "123", "name": "test.txt"}"""
+            every { responseBody.string() } returns thumbnailResponseBody
+
+            coEvery {
+                googleStorageApiService.getThumbnailLink(TEST_FILE_ID)
+            } returns Response.success(responseBody)
+
+            fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+        }
+
+    @Test(expected = OmhStorageException.ApiException::class)
+    fun `given a file id, when response has empty thumbnailLink, then ApiException is thrown`() =
+        runTest {
+            val thumbnailResponseBody = """{"thumbnailLink": ""}"""
+            every { responseBody.string() } returns thumbnailResponseBody
+
+            coEvery {
+                googleStorageApiService.getThumbnailLink(TEST_FILE_ID)
+            } returns Response.success(responseBody)
+
+            fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+        }
+
+    @Test(expected = OmhStorageException.ApiException::class)
+    fun `given a file id, when downloadThumbnail fails, then ApiException is thrown`() =
+        runTest {
+            val thumbnailUrl = "https://drive.google.com/thumbnail?id=123&sz=s220"
+            val sizedThumbnailUrl = "https://drive.google.com/thumbnail?id=123&sz=s128"
+            val thumbnailResponseBody = """{"thumbnailLink": "$thumbnailUrl"}"""
+
+            every { responseBody.string() } returns thumbnailResponseBody
+
+            coEvery {
+                googleStorageApiService.getThumbnailLink(TEST_FILE_ID)
+            } returns Response.success(responseBody)
+
+            coEvery {
+                googleStorageApiService.downloadThumbnail(sizedThumbnailUrl)
+            } returns Response.error(404, responseBody)
+
+            fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
         }
 }

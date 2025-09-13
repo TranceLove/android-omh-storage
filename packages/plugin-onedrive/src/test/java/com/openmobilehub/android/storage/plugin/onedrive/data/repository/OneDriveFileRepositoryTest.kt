@@ -28,6 +28,7 @@ import com.microsoft.graph.models.DriveRecipient
 import com.microsoft.graph.models.Permission
 import com.microsoft.graph.models.Quota
 import com.microsoft.kiota.ApiException
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhPermission
 import com.openmobilehub.android.storage.core.model.OmhPermissionRole
 import com.openmobilehub.android.storage.core.model.OmhStorageEntity
@@ -707,4 +708,77 @@ class OneDriveFileRepositoryTest {
 
         assertNotNull(repository.resolvePath("/RSX/1/2/3/testfile.jpg"))
     }
+
+    // Thumbnail Tests
+
+    @Test
+    fun `given a file id, when getFileThumbnail is success, then a ByteArrayOutputStream is returned`() =
+        runTest {
+            val expectedResult = "thumbnail_image_data".toByteArray()
+            val mockInputStream = expectedResult.inputStream()
+
+            every { apiService.getThumbnails(TEST_FILE_ID, "medium") } returns mockInputStream
+
+            val result = repository.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+
+            assertEquals(expectedResult.size, result.size())
+            verify { apiService.getThumbnails(TEST_FILE_ID, "medium") }
+        }
+
+    @Test(expected = OmhStorageException.ApiException::class)
+    fun `given a file id, when getThumbnails returns null, then ApiException is thrown`() =
+        runTest {
+            every { apiService.getThumbnails(TEST_FILE_ID, "medium") } returns null
+
+            repository.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+        }
+
+    @Test
+    fun `given a file id with different thumbnail sizes, when getFileThumbnail is success, then correct size is used`() =
+        runTest {
+            val expectedResult = "thumbnail_image_data".toByteArray()
+            val mockInputStream = expectedResult.inputStream()
+
+            every { apiService.getThumbnails(TEST_FILE_ID, "large") } returns mockInputStream
+
+            repository.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.LARGE)
+
+            verify { apiService.getThumbnails(TEST_FILE_ID, "large") }
+        }
+
+    @Test
+    fun `given a file id with very small size, when getFileThumbnail is success, then correct size is used`() =
+        runTest {
+            val expectedResult = "thumbnail_image_data".toByteArray()
+            val mockInputStream = expectedResult.inputStream()
+
+            every { apiService.getThumbnails(TEST_FILE_ID, "small") } returns mockInputStream
+
+            repository.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.VERY_SMALL)
+
+            verify { apiService.getThumbnails(TEST_FILE_ID, "small") }
+        }
+
+    @Test
+    fun `given a file id with very large size, when getFileThumbnail is success, then correct size is used`() =
+        runTest {
+            val expectedResult = "thumbnail_image_data".toByteArray()
+            val mockInputStream = expectedResult.inputStream()
+
+            every { apiService.getThumbnails(TEST_FILE_ID, "large") } returns mockInputStream
+
+            repository.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.VERY_LARGE)
+
+            verify { apiService.getThumbnails(TEST_FILE_ID, "large") }
+        }
+
+    @Test(expected = OmhStorageException.ApiException::class)
+    fun `given a file id, when getThumbnails throws ApiException, then ApiException is thrown`() =
+        runTest {
+            val mockException = ApiException()
+
+            every { apiService.getThumbnails(TEST_FILE_ID, "medium") } throws mockException
+
+            repository.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+        }
 }

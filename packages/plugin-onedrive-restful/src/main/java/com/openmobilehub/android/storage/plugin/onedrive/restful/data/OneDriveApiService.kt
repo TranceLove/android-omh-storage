@@ -51,6 +51,8 @@ interface OneDriveApiService {
         private const val PERMISSION_ID = "permissionId"
         private const val VERSIONS = "versions"
         private const val VERSION_ID = "versionId"
+        private const val THUMBNAILS = "thumbnails"
+        private const val THUMBNAIL_ID = "thumbnailId"
     }
 
     @GET("$V1/$ME/$DRIVE")
@@ -163,4 +165,17 @@ interface OneDriveApiService {
         @Path(ITEM_ID) itemId: String,
         @Path(PERMISSION_ID) permissionId: String,
     ): Response<Unit>
+
+    // Thumbnails
+    @GET("$V1/$DRIVE/$ITEMS/{$ITEM_ID}/$THUMBNAILS")
+    suspend fun getItemThumbnails(
+        @Path(ITEM_ID) itemId: String,
+    ): Response<ResponseBody>
+
+    @GET("$V1/$DRIVE/$ITEMS/{$ITEM_ID}/$THUMBNAILS/{$THUMBNAIL_ID}")
+    suspend fun getItemThumbnail(
+        @Path(ITEM_ID) itemId: String,
+        @Path(THUMBNAIL_ID) thumbnailId: String,
+        @Query("select") select: String? = null,
+    ): Response<ResponseBody>
 }

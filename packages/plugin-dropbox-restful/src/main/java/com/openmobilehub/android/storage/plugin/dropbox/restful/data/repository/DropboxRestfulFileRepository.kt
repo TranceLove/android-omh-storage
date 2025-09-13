@@ -1,5 +1,6 @@
 package com.openmobilehub.android.storage.plugin.dropbox.restful.data.repository
 
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhCreatePermission
 import com.openmobilehub.android.storage.core.model.OmhFileVersion
 import com.openmobilehub.android.storage.core.model.OmhIdentity
@@ -28,6 +29,7 @@ import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.GetFileRevisionsRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.GetFileSharingMetadataRequestBody
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.GetFolderSharingMetadataRequestBody
+import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.GetThumbnailRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFileSharedMembersRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFolderRequestBody
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFolderSharedMembersRequest
@@ -225,6 +227,43 @@ internal class DropboxRestfulFileRepository(
             "File not found",
             null,
         )
+    }
+
+    @Suppress("MagicNumber")
+    suspend fun getFileThumbnail(
+        fileId: String,
+        size: ThumbnailSize = ThumbnailSize.MEDIUM,
+    ): ByteArrayOutputStream {
+        val fileMetaData = getNodeMetadata(id = fileId)
+
+        return fileMetaData?.path?.let { path ->
+            val response = contentApiService.getFileThumbnail(
+                serialize(GetThumbnailRequest(path = path, size = mapThumbnailSizeToDropboxFormat(size)))
+            )
+            if (response.isSuccessful) {
+                response.body().toByteArrayOutputStream()
+            } else {
+                throw response.toApiException()
+            }
+        } ?: throw OmhStorageException.ApiException(
+            404,
+            "File not found",
+            null,
+        )
+    }
+
+    /**
+     * Maps ThumbnailSize enum to Dropbox thumbnail size format.
+     * Dropbox uses formats like "w32h32", "w64h64", etc.
+     */
+    private fun mapThumbnailSizeToDropboxFormat(size: ThumbnailSize): String {
+        return when (size) {
+            ThumbnailSize.VERY_SMALL -> "w32h32" // 16 -> 32 (closest available)
+            ThumbnailSize.SMALL -> "w32h32" // 32 -> 32
+            ThumbnailSize.MEDIUM -> "w64h64" // 64 -> 64
+            ThumbnailSize.LARGE -> "w128h128" // 128 -> 128
+            ThumbnailSize.VERY_LARGE -> "w256h256" // 256 -> 256
+        }
     }
 
     suspend fun getFilesList(parentId: String): List<OmhStorageEntity> {

@@ -29,6 +29,8 @@ internal interface DropboxContentApiService {
         private const val GET_TEMPORARY_LINK = "get_temporary_link"
 
         private const val EXPORT = "export"
+
+        private const val GET_THUMBNAIL = "get_thumbnail"
     }
 
     @POST("$FILES/$UPLOAD")
@@ -66,4 +68,9 @@ internal interface DropboxContentApiService {
     suspend fun getTemporaryLink(
         @Header(DROPBOX_API_ARG) pathRequestJson: String
     ): Response<GetTemporaryLinkResponse>
+
+    @POST("$FILES/$GET_THUMBNAIL")
+    suspend fun getFileThumbnail(
+        @Header(DROPBOX_API_ARG) thumbnailRequestJson: String
+    ): Response<ResponseBody>
 }

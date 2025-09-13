@@ -22,6 +22,7 @@ import com.dropbox.core.v2.files.FolderMetadata
 import com.dropbox.core.v2.files.WriteMode
 import com.dropbox.core.v2.sharing.SharedFolderMetadata
 import com.openmobilehub.android.auth.core.OmhAuthClient
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhCreatePermission
 import com.openmobilehub.android.storage.core.model.OmhFileVersion
 import com.openmobilehub.android.storage.core.model.OmhPermission
@@ -87,6 +88,26 @@ internal class DropboxFileRepository(
         outputStream
     } catch (exception: DbxException) {
         throw ExceptionMapper.toOmhApiException(exception)
+    }
+
+    fun getFileThumbnail(
+        fileId: String,
+        size: ThumbnailSize = ThumbnailSize.MEDIUM
+    ): ByteArrayOutputStream = try {
+        val dropboxSize = mapThumbnailSizeToDropboxSize(size)
+        apiService.getThumbnail(fileId, dropboxSize)
+    } catch (exception: DbxException) {
+        throw ExceptionMapper.toOmhApiException(exception)
+    }
+
+    private fun mapThumbnailSizeToDropboxSize(size: ThumbnailSize): String {
+        return when (size) {
+            ThumbnailSize.VERY_SMALL -> "w32h32" // 16 -> 32 (closest available)
+            ThumbnailSize.SMALL -> "w32h32" // 32 -> 32
+            ThumbnailSize.MEDIUM -> "w64h64" // 64 -> 64
+            ThumbnailSize.LARGE -> "w128h128" // 128 -> 128
+            ThumbnailSize.VERY_LARGE -> "w256h256" // 256 -> 256
+        }
     }
 
     fun getFileVersions(fileId: String): List<OmhFileVersion> = try {

@@ -22,6 +22,7 @@ import com.dropbox.core.DbxException
 import com.dropbox.core.v2.DbxClientV2
 import com.openmobilehub.android.auth.core.OmhAuthClient
 import com.openmobilehub.android.storage.core.OmhStorageClient
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhCreatePermission
 import com.openmobilehub.android.storage.core.model.OmhFileVersion
 import com.openmobilehub.android.storage.core.model.OmhPermission
@@ -124,6 +125,10 @@ internal class DropboxOmhStorageClient @VisibleForTesting internal constructor(
         exportedMimeType: String
     ): ByteArrayOutputStream {
         throw UnsupportedOperationException("Exporting files is not supported in Dropbox")
+    }
+
+    override suspend fun getFileThumbnail(fileId: String, size: ThumbnailSize): ByteArrayOutputStream {
+        return repository.getFileThumbnail(fileId, size)
     }
 
     override suspend fun getWebUrl(fileId: String): String? {

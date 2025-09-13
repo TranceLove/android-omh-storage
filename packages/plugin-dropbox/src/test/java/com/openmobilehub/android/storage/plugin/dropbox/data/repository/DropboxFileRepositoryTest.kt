@@ -47,6 +47,7 @@ import com.dropbox.core.v2.sharing.SharedFolderMetadata
 import com.dropbox.core.v2.sharing.UserFileMembershipInfo
 import com.dropbox.core.v2.sharing.UserInfo
 import com.dropbox.core.v2.users.SpaceUsage
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhPermission
 import com.openmobilehub.android.storage.core.model.OmhPermissionRole
 import com.openmobilehub.android.storage.core.model.OmhStorageEntity
@@ -101,6 +102,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Test
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import kotlin.test.assertNull
@@ -1125,4 +1127,71 @@ class DropboxFileRepositoryTest {
         verify { apiService.queryNodeIdHaving("/RSX/1/2/3/testfile.jpg") }
         verify { apiService.getFile("id of file /RSX/1/2/3/testfile.jpg") }
     }
+
+    // Thumbnail Tests
+
+    @Test
+    fun `given a file id, when getFileThumbnail is success, then a ByteArrayOutputStream is returned`() =
+        runTest {
+            val expectedResult = ByteArrayOutputStream().apply {
+                write("thumbnail_image_data".toByteArray())
+            }
+
+            every { apiService.getThumbnail(TEST_FILE_ID, "w64h64") } returns expectedResult
+
+            val result = repository.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+
+            assertEquals(expectedResult.size(), result.size())
+            verify { apiService.getThumbnail(TEST_FILE_ID, "w64h64") }
+        }
+
+    @Test(expected = OmhStorageException.ApiException::class)
+    fun `given a file id, when getThumbnail throws DbxException, then ApiException is thrown`() =
+        runTest {
+            every { apiService.getThumbnail(TEST_FILE_ID, "w64h64") } throws dbxApiException
+
+            repository.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+        }
+
+    @Test
+    fun `given a file id with different thumbnail sizes, when getFileThumbnail is success, then correct size is used`() =
+        runTest {
+            val expectedResult = ByteArrayOutputStream().apply {
+                write("thumbnail_image_data".toByteArray())
+            }
+
+            every { apiService.getThumbnail(TEST_FILE_ID, "w128h128") } returns expectedResult
+
+            repository.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.LARGE)
+
+            verify { apiService.getThumbnail(TEST_FILE_ID, "w128h128") }
+        }
+
+    @Test
+    fun `given a file id with very small size, when getFileThumbnail is success, then correct size is used`() =
+        runTest {
+            val expectedResult = ByteArrayOutputStream().apply {
+                write("thumbnail_image_data".toByteArray())
+            }
+
+            every { apiService.getThumbnail(TEST_FILE_ID, "w32h32") } returns expectedResult
+
+            repository.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.VERY_SMALL)
+
+            verify { apiService.getThumbnail(TEST_FILE_ID, "w32h32") }
+        }
+
+    @Test
+    fun `given a file id with very large size, when getFileThumbnail is success, then correct size is used`() =
+        runTest {
+            val expectedResult = ByteArrayOutputStream().apply {
+                write("thumbnail_image_data".toByteArray())
+            }
+
+            every { apiService.getThumbnail(TEST_FILE_ID, "w256h256") } returns expectedResult
+
+            repository.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.VERY_LARGE)
+
+            verify { apiService.getThumbnail(TEST_FILE_ID, "w256h256") }
+        }
 }

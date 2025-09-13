@@ -1,6 +1,7 @@
 package com.openmobilehub.android.storage.plugin.onedrive.restful.data.repository
 
 import android.webkit.MimeTypeMap
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhCreatePermission
 import com.openmobilehub.android.storage.core.model.OmhIdentity
 import com.openmobilehub.android.storage.core.model.OmhPermission
@@ -66,6 +67,9 @@ class OneDriveRestfulFileRepositoryTest {
     @MockK
     private lateinit var apiService: OneDriveApiService
 
+    @MockK
+    private lateinit var httpClient: OkHttpClient
+
     private lateinit var repository: OneDriveRestfulFileRepository
 
     @Before
@@ -74,7 +78,7 @@ class OneDriveRestfulFileRepositoryTest {
         mockkStatic(MimeTypeMap::class)
         every { MimeTypeMap.getSingleton() } returns mimeTypeMap
         every { mimeTypeMap.getMimeTypeFromExtension(any()) } returns TEST_MIME_TYPE
-        repository = OneDriveRestfulFileRepository(apiService, OkHttpClient())
+        repository = OneDriveRestfulFileRepository(apiService, httpClient)
     }
 
     @Test
@@ -825,5 +829,60 @@ class OneDriveRestfulFileRepositoryTest {
             assertTrue(identities.any { it is OmhIdentity.User && it.id == "U100" })
             assertTrue(identities.any { it is OmhIdentity.Group && it.id == "G200" })
             assertTrue(identities.any { it is OmhIdentity.User && it.id == "SU300" })
+        }
+
+    // Thumbnail Tests
+
+    @Test
+    fun `given a file id, when getFileThumbnail is success, then a ByteArrayOutputStream is returned`() =
+        runTest {
+            val expectedResult = "thumbnail_image_data".toByteArray()
+            val thumbnailUrl = "https://graph.microsoft.com/v1.0/drive/items/123/thumbnails/0/medium/content"
+
+            val thumbnailsResponseJson = """
+                {
+                    "value": [
+                        {
+                            "id": "0",
+                            "small": {
+                                "height": 96,
+                                "width": 96,
+                                "url": "https://graph.microsoft.com/v1.0/drive/items/123/thumbnails/0/small/content"
+                            },
+                            "medium": {
+                                "height": 176,
+                                "width": 176,
+                                "url": "$thumbnailUrl"
+                            },
+                            "large": {
+                                "height": 800,
+                                "width": 800,
+                                "url": "https://graph.microsoft.com/v1.0/drive/items/123/thumbnails/0/large/content"
+                            }
+                        }
+                    ]
+                }
+            """.trimIndent()
+
+            coEvery {
+                apiService.getItemThumbnails("testFile1")
+            } returns Response.success(
+                thumbnailsResponseJson.toResponseBody("application/json".toMediaTypeOrNull())
+            )
+
+            val mockResponse = okhttp3.Response.Builder()
+                .request(Request.Builder().url(thumbnailUrl).build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body(expectedResult.toResponseBody("image/jpeg".toMediaType()))
+                .build()
+
+            coEvery { httpClient.newCall(any()).execute() } returns mockResponse
+
+            val result = repository.getFileThumbnail("testFile1", ThumbnailSize.MEDIUM)
+
+            assertEquals(expectedResult.size, result.size())
+            coVerify { apiService.getItemThumbnails("testFile1") }
         }
 }

@@ -17,6 +17,7 @@
 package com.openmobilehub.android.storage.plugin.googledrive.nongms.data.repository
 
 import androidx.annotation.VisibleForTesting
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhCreatePermission
 import com.openmobilehub.android.storage.core.model.OmhFileVersion
 import com.openmobilehub.android.storage.core.model.OmhPermission
@@ -75,6 +76,13 @@ internal class NonGmsFileRepository(
         private const val SMALL_FILE_SIZE = 1024 * 1024 // 1MB
         private const val DEFAULT_UPLOAD_MIME_TYPE = "application/octet-stream"
         private const val RESUME_INCOMPLETE_STATUS_CODE = 308
+
+        // Google Drive thumbnail size constants
+        private const val THUMBNAIL_SIZE_32 = 32
+        private const val THUMBNAIL_SIZE_64 = 64
+        private const val THUMBNAIL_SIZE_128 = 128
+        private const val THUMBNAIL_SIZE_256 = 256
+        private const val THUMBNAIL_SIZE_512 = 512
     }
 
     suspend fun getFilesList(parentId: String): List<OmhStorageEntity> {
@@ -378,6 +386,77 @@ internal class NonGmsFileRepository(
             response.body().toByteArrayOutputStream()
         } else {
             throw response.toApiException()
+        }
+    }
+
+    @Suppress("ThrowsCount")
+    suspend fun getFileThumbnail(
+        fileId: String,
+        size: ThumbnailSize = ThumbnailSize.MEDIUM
+    ): ByteArrayOutputStream {
+        // First, get the thumbnail link from Google Drive
+        val thumbnailResponse = retrofitImpl
+            .getGoogleStorageApiService()
+            .getThumbnailLink(fileId = fileId)
+
+        if (!thumbnailResponse.isSuccessful) {
+            throw thumbnailResponse.toApiException()
+        }
+
+        // Parse the JSON response to extract the thumbnail link
+        val responseBody = thumbnailResponse.body()?.string()
+            ?: throw OmhStorageException.ApiException(message = "Empty response body")
+
+        val jsonObject = JSONObject(responseBody)
+        val thumbnailLink = jsonObject.optString("thumbnailLink")
+
+        if (thumbnailLink.isNullOrEmpty()) {
+            throw OmhStorageException.ApiException(
+                message = "No thumbnail available for this file"
+            )
+        }
+
+        // Modify the thumbnail URL to request the desired size
+        val sizedThumbnailUrl = modifyThumbnailUrlForSize(thumbnailLink, size)
+
+        // Download the thumbnail
+        val downloadResponse = retrofitImpl
+            .getGoogleStorageApiService()
+            .downloadThumbnail(sizedThumbnailUrl)
+
+        return if (downloadResponse.isSuccessful) {
+            downloadResponse.body().toByteArrayOutputStream()
+        } else {
+            throw downloadResponse.toApiException()
+        }
+    }
+
+    /**
+     * Modifies Google Drive thumbnail URL to request a specific size.
+     * Google Drive thumbnail URLs have format: ...=s220 where 220 is the size.
+     * We replace this with our desired size.
+     */
+    private fun modifyThumbnailUrlForSize(thumbnailUrl: String, size: ThumbnailSize): String {
+        val targetSize = mapThumbnailSizeToGoogleDriveSize(size)
+        return if (thumbnailUrl.contains("=s")) {
+            thumbnailUrl.replaceAfterLast("=s", targetSize.toString())
+        } else {
+            // If URL doesn't have size parameter, append it
+            "$thumbnailUrl=s$targetSize"
+        }
+    }
+
+    /**
+     * Maps ThumbnailSize enum to Google Drive thumbnail size.
+     * Google Drive supports various sizes, we'll use common ones.
+     */
+    private fun mapThumbnailSizeToGoogleDriveSize(size: ThumbnailSize): Int {
+        return when (size) {
+            ThumbnailSize.VERY_SMALL -> THUMBNAIL_SIZE_32 // 16 -> 32 (closest available)
+            ThumbnailSize.SMALL -> THUMBNAIL_SIZE_64 // 32 -> 64
+            ThumbnailSize.MEDIUM -> THUMBNAIL_SIZE_128 // 64 -> 128
+            ThumbnailSize.LARGE -> THUMBNAIL_SIZE_256 // 128 -> 256
+            ThumbnailSize.VERY_LARGE -> THUMBNAIL_SIZE_512 // 256 -> 512
         }
     }
 

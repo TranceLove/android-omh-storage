@@ -27,6 +27,7 @@ import com.google.api.services.drive.model.Permission
 import com.google.api.services.drive.model.PermissionList
 import com.google.api.services.drive.model.Revision
 import com.google.api.services.drive.model.RevisionList
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhPermissionRole
 import com.openmobilehub.android.storage.core.model.OmhStorageException
 import com.openmobilehub.android.storage.core.model.OmhStorageMetadata
@@ -713,4 +714,88 @@ internal class GmsFileRepositoryTest {
         }
         verify { apiService.getFile("id of file /RSX/1/2/3/testfile.jpg") }
     }
+
+    // Thumbnail Tests
+
+    @Test
+    @Suppress("SwallowedException")
+    fun `given a file id, when getThumbnailLink returns valid URL, then getThumbnailLink is called`() =
+        runTest {
+            val thumbnailUrl = "https://drive.google.com/thumbnail?id=123&sz=s220"
+            val file = GoogleDriveFile().apply {
+                thumbnailLink = thumbnailUrl
+            }
+
+            every { apiService.getThumbnailLink(TEST_FILE_ID) } returns mockk {
+                every { execute() } returns file
+            }
+
+            try {
+                fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+            } catch (e: Exception) {
+                // Expected to fail at URL connection, but we verify the API call was made
+            }
+
+            verify { apiService.getThumbnailLink(TEST_FILE_ID) }
+        }
+
+    @Test(expected = OmhStorageException.ApiException::class)
+    fun `given a file id, when getThumbnailLink returns null thumbnailLink, then ApiException is thrown`() =
+        runTest {
+            val file = GoogleDriveFile().apply {
+                thumbnailLink = null
+            }
+
+            every { apiService.getThumbnailLink(TEST_FILE_ID) } returns mockk {
+                every { execute() } returns file
+            }
+
+            fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+        }
+
+    @Test(expected = OmhStorageException.ApiException::class)
+    fun `given a file id, when getThumbnailLink returns empty thumbnailLink, then ApiException is thrown`() =
+        runTest {
+            val file = GoogleDriveFile().apply {
+                thumbnailLink = ""
+            }
+
+            every { apiService.getThumbnailLink(TEST_FILE_ID) } returns mockk {
+                every { execute() } returns file
+            }
+
+            fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+        }
+
+    @Test
+    @Suppress("SwallowedException")
+    fun `given a file id with different thumbnail sizes, when getFileThumbnail is called, then getThumbnailLink is called`() =
+        runTest {
+            val thumbnailUrl = "https://drive.google.com/thumbnail?id=123&sz=s220"
+            val file = GoogleDriveFile().apply {
+                thumbnailLink = thumbnailUrl
+            }
+
+            every { apiService.getThumbnailLink(TEST_FILE_ID) } returns mockk {
+                every { execute() } returns file
+            }
+
+            try {
+                fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.LARGE)
+            } catch (e: Exception) {
+                // Expected to fail at URL connection, but we verify the API call was made
+            }
+
+            verify { apiService.getThumbnailLink(TEST_FILE_ID) }
+        }
+
+    @Test(expected = OmhStorageException.ApiException::class)
+    fun `given a file id, when getThumbnailLink throws HttpResponseException, then ApiException is thrown`() =
+        runTest {
+            every { apiService.getThumbnailLink(TEST_FILE_ID) } returns mockk {
+                every { execute() } throws responseException
+            }
+
+            fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
+        }
 }

@@ -75,6 +75,7 @@ internal interface GoogleStorageApiService {
         private const val QUERY_REQUESTED_FIELDS_ALL = "*"
         private const val QUERY_PERMISSIONS = "permissions"
         private const val QUERY_WEB_URL = "webViewLink"
+        private const val QUERY_THUMBNAIL_LINK = "thumbnailLink"
 
         private const val FILE_ID = "fileId"
         private const val REVISION_ID = "revisionId"
@@ -225,4 +226,15 @@ internal interface GoogleStorageApiService {
     suspend fun about(
         @Query(QUERY_FIELDS) fields: String? = null
     ): Response<AboutResponse>
+
+    @GET("$FILES_PARTICLE/{$FILE_ID}")
+    suspend fun getThumbnailLink(
+        @Path(FILE_ID) fileId: String,
+        @Query(QUERY_FIELDS) fields: String = QUERY_THUMBNAIL_LINK,
+    ): Response<ResponseBody>
+
+    @GET
+    suspend fun downloadThumbnail(
+        @Url url: String
+    ): Response<ResponseBody>
 }

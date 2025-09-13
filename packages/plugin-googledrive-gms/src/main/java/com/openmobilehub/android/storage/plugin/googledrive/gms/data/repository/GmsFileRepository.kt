@@ -20,6 +20,7 @@ import android.webkit.MimeTypeMap
 import com.google.api.client.http.FileContent
 import com.google.api.client.http.HttpResponseException
 import com.openmobilehub.android.auth.core.OmhAuthClient
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhCreatePermission
 import com.openmobilehub.android.storage.core.model.OmhFileVersion
 import com.openmobilehub.android.storage.core.model.OmhPermission
@@ -37,6 +38,8 @@ import com.openmobilehub.android.storage.plugin.googledrive.gms.data.mapper.toPe
 import com.openmobilehub.android.storage.plugin.googledrive.gms.data.service.GoogleDriveApiService
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import com.google.api.services.drive.model.File as GoogleDriveFile
 
 @Suppress("TooManyFunctions")
@@ -46,6 +49,11 @@ internal class GmsFileRepository(
     companion object {
         private const val ANY_MIME_TYPE = "*/*"
         private const val QUERY_REQUEST_STORAGE_QUOTA = "storageQuota"
+        private const val THUMBNAIL_SIZE_32 = 32
+        private const val THUMBNAIL_SIZE_64 = 64
+        private const val THUMBNAIL_SIZE_128 = 128
+        private const val THUMBNAIL_SIZE_256 = 256
+        private const val THUMBNAIL_SIZE_512 = 512
     }
 
     internal interface Builder {
@@ -155,6 +163,73 @@ internal class GmsFileRepository(
         outputStream
     } catch (exception: HttpResponseException) {
         throw ExceptionMapper.toOmhApiException(exception)
+    }
+
+    @Suppress("ThrowsCount")
+    fun getFileThumbnail(
+        fileId: String,
+        size: ThumbnailSize = ThumbnailSize.MEDIUM
+    ): ByteArrayOutputStream = try {
+        // Get the thumbnail link from file metadata
+        val file = apiService.getThumbnailLink(fileId).execute()
+        val thumbnailLink = file.thumbnailLink
+
+        if (thumbnailLink.isNullOrEmpty()) {
+            throw OmhStorageException.ApiException(
+                message = "No thumbnail available for this file"
+            )
+        }
+
+        // Modify the thumbnail URL for the desired size
+        val sizedThumbnailUrl = modifyThumbnailUrlForSize(thumbnailLink, size)
+
+        // Download the thumbnail
+        downloadThumbnailFromUrl(sizedThumbnailUrl)
+    } catch (exception: HttpResponseException) {
+        throw ExceptionMapper.toOmhApiException(exception)
+    }
+
+    private fun modifyThumbnailUrlForSize(thumbnailUrl: String, size: ThumbnailSize): String {
+        val targetSize = mapThumbnailSizeToGoogleDriveSize(size)
+        return if (thumbnailUrl.contains("=s")) {
+            thumbnailUrl.replaceAfterLast("=s", targetSize.toString())
+        } else {
+            "$thumbnailUrl=s$targetSize"
+        }
+    }
+
+    private fun mapThumbnailSizeToGoogleDriveSize(size: ThumbnailSize): Int {
+        return when (size) {
+            ThumbnailSize.VERY_SMALL -> THUMBNAIL_SIZE_32 // 16 -> 32 (closest available)
+            ThumbnailSize.SMALL -> THUMBNAIL_SIZE_64 // 32 -> 64
+            ThumbnailSize.MEDIUM -> THUMBNAIL_SIZE_128 // 64 -> 128
+            ThumbnailSize.LARGE -> THUMBNAIL_SIZE_256 // 128 -> 256
+            ThumbnailSize.VERY_LARGE -> THUMBNAIL_SIZE_512 // 256 -> 512
+        }
+    }
+
+    private fun downloadThumbnailFromUrl(url: String): ByteArrayOutputStream {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        return try {
+            connection.requestMethod = "GET"
+            connection.connect()
+
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                throw OmhStorageException.ApiException(
+                    connection.responseCode,
+                    "Failed to download thumbnail: ${connection.responseMessage}",
+                    null
+                )
+            }
+
+            val outputStream = ByteArrayOutputStream()
+            connection.inputStream.use { inputStream ->
+                inputStream.copyTo(outputStream)
+            }
+            outputStream
+        } finally {
+            connection.disconnect()
+        }
     }
 
     fun updateFile(localFileToUpload: File, fileId: String): OmhStorageEntity.OmhFile? = try {

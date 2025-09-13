@@ -25,6 +25,8 @@ import androidx.recyclerview.widget.DiffUtil.ItemCallback
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.signature.ObjectKey
 import com.openmobilehub.android.storage.core.model.OmhStorageEntity
 import com.openmobilehub.android.storage.sample.R
 import com.openmobilehub.android.storage.sample.databinding.FileGridAdapterBinding
@@ -91,14 +93,38 @@ class FileAdapter(
         private fun loadFileIcon(
             context: Context,
             iconUrl: String,
-            imageView: ImageView
+            imageView: ImageView,
+            signatureKey: String?
         ) {
-            Glide.with(context)
+            val request = Glide.with(context)
                 .asBitmap()
                 .load(iconUrl)
                 .centerCrop()
                 .placeholder(R.mipmap.ic_launcher)
-                .into(imageView)
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
+            if (signatureKey != null) {
+                request.signature(ObjectKey(signatureKey))
+            }
+            request.into(imageView)
+        }
+
+        // Overload for raw bytes
+        private fun loadFileIcon(
+            context: Context,
+            iconBytes: ByteArray,
+            imageView: ImageView,
+            signatureKey: String?
+        ) {
+            val request = Glide.with(context)
+                .asBitmap()
+                .load(iconBytes) // <- load from bytes
+                .centerCrop()
+                .placeholder(R.mipmap.ic_launcher)
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
+            if (signatureKey != null) {
+                request.signature(ObjectKey(signatureKey))
+            }
+            request.into(imageView)
         }
     }
 
@@ -119,22 +145,35 @@ class FileAdapter(
 
     }
 
+    // Map of fileId -> thumbnail bytes
+    private var thumbnails: Map<String, ByteArray> = emptyMap()
+
+    fun updateThumbnails(newThumbnails: Map<String, ByteArray>) {
+        thumbnails = newThumbnails
+        notifyDataSetChanged()
+    }
+
     abstract class FileViewHolder(binding: View) : RecyclerView.ViewHolder(binding) {
 
-        abstract fun bind(file: OmhStorageEntity, listener: GridItemListener)
+        abstract fun bind(file: OmhStorageEntity, fileIconBytes: ByteArray?, listener: GridItemListener)
     }
 
     class FileGridViewHolder(
         private val binding: FileGridAdapterBinding
     ) : FileViewHolder(binding.root) {
 
-        override fun bind(file: OmhStorageEntity, listener: GridItemListener) {
+        override fun bind(file: OmhStorageEntity, fileIconBytes: ByteArray?, listener: GridItemListener) {
             val context = binding.root.context
             val iconLink = getFileIconUrl(file)
+            val signatureKey = file.id
 
             with(binding) {
                 fileName.text = file.name
-                loadFileIcon(context, iconLink, fileIcon)
+                if (fileIconBytes != null) {
+                    loadFileIcon(context, fileIconBytes, fileIcon, signatureKey)
+                } else {
+                    loadFileIcon(context, iconLink, fileIcon, signatureKey)
+                }
                 root.setOnClickListener { listener.onFileClicked(file) }
                 buttonMoreOptions.setOnClickListener { listener.onMoreOptionsClicked(file) }
             }
@@ -145,13 +184,18 @@ class FileAdapter(
         private val binding: FileLinearAdapterBinding
     ) : FileViewHolder(binding.root) {
 
-        override fun bind(file: OmhStorageEntity, listener: GridItemListener) {
+        override fun bind(file: OmhStorageEntity, fileIconBytes: ByteArray?, listener: GridItemListener) {
             val context = binding.root.context
             val iconLink = getFileIconUrl(file)
+            val signatureKey = file.id
 
             with(binding) {
                 fileName.text = file.name
-                loadFileIcon(context, iconLink, fileIcon)
+                if (fileIconBytes != null) {
+                    loadFileIcon(context, fileIconBytes, fileIcon, signatureKey)
+                } else {
+                    loadFileIcon(context, iconLink, fileIcon, signatureKey)
+                }
                 root.setOnClickListener { listener.onFileClicked(file) }
                 buttonMoreOptions.setOnClickListener { listener.onMoreOptionsClicked(file) }
             }
@@ -176,6 +220,8 @@ class FileAdapter(
     }
 
     override fun onBindViewHolder(holder: FileViewHolder, position: Int) {
-        holder.bind(getItem(position), listener)
+        val item = getItem(position)
+        val bytes = thumbnails[item.id]
+        holder.bind(item, bytes, listener)
     }
 }

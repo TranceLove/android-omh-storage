@@ -238,4 +238,14 @@ internal class DropboxApiService(internal val apiClient: DropboxApiClient) {
         val node: Metadata = apiClient.dropboxApiService.files().getMetadata(path) ?: return null
         return (node as? FolderMetadata)?.id ?: (node as FileMetadata).id
     }
+
+    fun getThumbnail(fileId: String, size: String, format: String = "jpeg"): ByteArrayOutputStream {
+        val outputStream = ByteArrayOutputStream()
+        apiClient.dropboxApiService.files()
+            .getThumbnailBuilder(fileId)
+            .withFormat(com.dropbox.core.v2.files.ThumbnailFormat.valueOf(format.uppercase()))
+            .withSize(com.dropbox.core.v2.files.ThumbnailSize.valueOf(size.uppercase()))
+            .download(outputStream)
+        return outputStream
+    }
 }
