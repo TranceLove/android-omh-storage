@@ -21,5 +21,6 @@ enum class StorageAuthProvider {
     DROPBOX,
     MICROSOFT,
     DROPBOX_RESTFUL,
-    MICROSOFT_RESTFUL
+    MICROSOFT_RESTFUL,
+    BOX
 }

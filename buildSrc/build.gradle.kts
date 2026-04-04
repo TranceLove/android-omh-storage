@@ -9,6 +9,10 @@ repositories {
     maven("https://s01.oss.sonatype.org/content/groups/staging/")
 }
 
+kotlin {
+    jvmToolchain(17)
+}
+
 configurations.all {
     resolutionStrategy.eachDependency {
         when (requested.name) {

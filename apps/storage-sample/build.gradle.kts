@@ -134,6 +134,7 @@ dependencies {
     implementation(Libs.omhGoogleGmsAuthLibrary)
     implementation(Libs.omhDropboxAuthLibrary)
     implementation(Libs.omhMicrosoftAuthLibrary)
+    implementation(Libs.omhBoxAuthLibrary)
 
     implementation(Libs.dokka)
 
@@ -147,6 +148,7 @@ dependencies {
         implementation(project(":packages:plugin-onedrive-restful"))
         implementation(project(":packages:plugin-dropbox"))
         implementation(project(":packages:plugin-dropbox-restful"))
+        implementation(project(":packages:plugin-box-restful"))
     } else {
         implementation("com.openmobilehub.android.storage:core:2.0.6-alpha")
         implementation("com.openmobilehub.android.storage:plugin-googledrive-gms:2.1.0-alpha")

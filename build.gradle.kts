@@ -82,8 +82,10 @@ subprojects {
 
 tasks.register("publishCoreToMavenLocal") {
     dependsOn(
-        ":packages:core:assembleRelease",
+        ":packages:core:assembleDebug",
         ":packages:core:publishToMavenLocal",
+        ":packages:core-restful-common:assembleRelease",
+        ":packages:core-restful-common:publishToMavenLocal",
     )
 }
 
@@ -95,8 +97,14 @@ tasks.register("publishPluginsToMavenLocal") {
         ":packages:plugin-googledrive-non-gms:publishToMavenLocal",
         ":packages:plugin-onedrive:assembleRelease",
         ":packages:plugin-onedrive:publishToMavenLocal",
+        ":packages:plugin-onedrive-restful:assembleRelease",
+        ":packages:plugin-onedrive-restful:publishToMavenLocal",
         ":packages:plugin-dropbox:assembleRelease",
         ":packages:plugin-dropbox:publishToMavenLocal",
+        ":packages:plugin-dropbox-restful:assembleRelease",
+        ":packages:plugin-dropbox-restful:publishToMavenLocal",
+        ":packages:plugin-box-restful:assembleRelease",
+        ":packages:plugin-box-restful:publishToMavenLocal",
     )
 }
 

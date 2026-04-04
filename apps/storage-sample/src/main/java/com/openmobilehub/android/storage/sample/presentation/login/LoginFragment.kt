@@ -82,6 +82,9 @@ class LoginFragment : BaseFragment<LoginViewModel, LoginViewState, LoginViewEven
         binding.btnLoginMicrosoftRestful.setOnClickListener {
             dispatchEvent(LoginViewEvent.LoginWithMicrosoftRestfulClicked)
         }
+        binding.btnLoginBox.setOnClickListener {
+            dispatchEvent(LoginViewEvent.LoginWithBoxClicked)
+        }
 
         return binding.root
     }

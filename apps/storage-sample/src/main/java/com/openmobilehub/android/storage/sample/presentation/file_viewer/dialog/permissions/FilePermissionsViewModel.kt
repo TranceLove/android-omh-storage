@@ -68,6 +68,7 @@ class FilePermissionsViewModel @Inject constructor(
             StorageAuthProvider.GOOGLE -> true
             StorageAuthProvider.DROPBOX, StorageAuthProvider.DROPBOX_RESTFUL -> true
             StorageAuthProvider.MICROSOFT, StorageAuthProvider.MICROSOFT_RESTFUL -> false
+            StorageAuthProvider.BOX -> false
         }
 
     @StringRes val permissionCaveats: Int? =
@@ -75,6 +76,7 @@ class FilePermissionsViewModel @Inject constructor(
             StorageAuthProvider.GOOGLE -> null
             StorageAuthProvider.DROPBOX, StorageAuthProvider.DROPBOX_RESTFUL -> R.string.permission_caveats_dropbox
             StorageAuthProvider.MICROSOFT, StorageAuthProvider.MICROSOFT_RESTFUL -> null
+            StorageAuthProvider.BOX -> null
         }
 
     fun getPermissions(file: OmhStorageEntity) {

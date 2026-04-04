@@ -51,10 +51,10 @@ class CreatePermissionViewModel @Inject constructor(
         StorageAuthProvider.DROPBOX, StorageAuthProvider.DROPBOX_RESTFUL -> setOf(
             OmhPermissionRole.READER
         )
-
         StorageAuthProvider.MICROSOFT, StorageAuthProvider.MICROSOFT_RESTFUL -> setOf(
             OmhPermissionRole.COMMENTER
         )
+        StorageAuthProvider.BOX -> emptySet()
     }
 
     private val _role: MutableStateFlow<OmhPermissionRole> =
@@ -65,6 +65,7 @@ class CreatePermissionViewModel @Inject constructor(
                      -> OmhPermissionRole.COMMENTER
                 StorageAuthProvider.MICROSOFT, StorageAuthProvider.MICROSOFT_RESTFUL
                      -> OmhPermissionRole.READER
+                StorageAuthProvider.BOX -> OmhPermissionRole.READER
             }
         )
     val role: StateFlow<OmhPermissionRole> = _role
@@ -88,6 +89,9 @@ class CreatePermissionViewModel @Inject constructor(
 
         StorageAuthProvider.MICROSOFT, StorageAuthProvider.MICROSOFT_RESTFUL -> setOf(
             PermissionType.ANYONE,
+            PermissionType.DOMAIN
+        )
+        StorageAuthProvider.BOX -> setOf(
             PermissionType.DOMAIN
         )
     }

@@ -59,6 +59,7 @@ object Libs {
     val omhGoogleGmsAuthLibrary by lazy { "com.openmobilehub.android.auth:plugin-google-gms:${Versions.omhAuth}" }
     val omhDropboxAuthLibrary by lazy { "com.openmobilehub.android.auth:plugin-dropbox:${Versions.omhAuth}" }
     val omhMicrosoftAuthLibrary by lazy { "com.openmobilehub.android.auth:plugin-microsoft:${Versions.omhAuth}" }
+    val omhBoxAuthLibrary by lazy { "com.openmobilehub.android.auth:plugin-box-mobileweb:${Versions.omhAuth}" }
 
     // Play services
     val googlePlayBase by lazy { "com.google.android.gms:play-services-base:${Versions.googlePlayBase}" }

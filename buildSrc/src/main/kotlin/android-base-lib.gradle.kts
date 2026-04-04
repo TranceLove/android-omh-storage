@@ -151,3 +151,7 @@ if (useMavenLocal) {
         sign(publishing.publications)
     }
 }
+
+kotlin {
+    jvmToolchain(17)
+}

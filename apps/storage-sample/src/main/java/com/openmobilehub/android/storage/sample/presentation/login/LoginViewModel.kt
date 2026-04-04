@@ -47,6 +47,8 @@ class LoginViewModel @Inject constructor(
                 loginClickedEvent(StorageAuthProvider.DROPBOX_RESTFUL)
             LoginViewEvent.LoginWithMicrosoftRestfulClicked ->
                 loginClickedEvent(StorageAuthProvider.MICROSOFT_RESTFUL)
+            LoginViewEvent.LoginWithBoxClicked ->
+                loginClickedEvent(StorageAuthProvider.BOX)
         }
     }
 

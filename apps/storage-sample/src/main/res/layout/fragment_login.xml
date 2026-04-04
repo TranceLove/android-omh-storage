@@ -73,6 +73,13 @@
                 android:layout_marginBottom="16dp"
                 android:text="@string/login_microsoft_restful" />
 
+        <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_login_box"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:text="@string/login_box" />
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
