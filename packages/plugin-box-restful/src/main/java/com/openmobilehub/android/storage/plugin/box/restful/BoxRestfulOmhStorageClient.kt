@@ -2,6 +2,7 @@ package com.openmobilehub.android.storage.plugin.box.restful
 
 import com.openmobilehub.android.auth.core.OmhAuthClient
 import com.openmobilehub.android.storage.core.OmhStorageClient
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhCreatePermission
 import com.openmobilehub.android.storage.core.model.OmhFileVersion
 import com.openmobilehub.android.storage.core.model.OmhPermission
@@ -104,6 +105,13 @@ class BoxRestfulOmhStorageClient(
         // For Box, we'll implement this as upload to replace the existing file
         // This is a simplified implementation
         throw UnsupportedOperationException("File update with local file is not implemented for Box plugin")
+    }
+
+    override suspend fun getFileThumbnail(
+        fileId: String,
+        size: ThumbnailSize
+    ): ByteArrayOutputStream {
+        return fileRepository.getThumbnail(fileId, size)
     }
 
     override suspend fun getFileVersions(fileId: String): List<OmhFileVersion> {

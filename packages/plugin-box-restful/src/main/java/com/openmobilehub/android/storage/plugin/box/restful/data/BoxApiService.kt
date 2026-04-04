@@ -86,6 +86,17 @@ interface BoxApiService {
         @Query("type") type: String? = null
     ): Response<SearchResponse>
 
+    @GET("files/{file_id}/thumbnail.{extension}")
+    @Suppress("LongParameterList")
+    suspend fun getFileThumbnail(
+        @Path("file_id") fileId: String,
+        @Path("extension") extension: String,
+        @Query("min_width") minWidth: Int? = null,
+        @Query("max_width") maxWidth: Int? = null,
+        @Query("min_height") minHeight: Int? = null,
+        @Query("max_height") maxHeight: Int? = null
+    ): Response<ResponseBody>
+
     // File versions endpoints
     @GET("files/{file_id}/versions")
     suspend fun getFileVersions(

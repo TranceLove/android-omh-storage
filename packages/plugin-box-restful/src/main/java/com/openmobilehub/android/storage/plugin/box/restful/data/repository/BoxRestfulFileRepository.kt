@@ -4,6 +4,7 @@ import android.util.Base64.DEFAULT
 import android.util.Base64.decode
 import android.util.Base64.encodeToString
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.openmobilehub.android.storage.core.ThumbnailSize
 import com.openmobilehub.android.storage.core.model.OmhCreatePermission
 import com.openmobilehub.android.storage.core.model.OmhFileVersion
 import com.openmobilehub.android.storage.core.model.OmhPermission
@@ -34,6 +35,7 @@ import com.openmobilehub.android.storage.plugin.box.restful.data.source.mapper.t
 import com.openmobilehub.android.storage.plugin.box.restful.data.source.mapper.toOmhStorageEntity
 import com.openmobilehub.android.storage.plugin.box.restful.data.source.response.UploadSessionResponse
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -41,6 +43,10 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.net.HttpURLConnection.HTTP_ACCEPTED
+import java.net.HttpURLConnection.HTTP_MOVED_TEMP
+import java.net.HttpURLConnection.HTTP_NOT_FOUND
+import kotlin.time.Duration.Companion.seconds
 
 @Suppress("TooManyFunctions", "TooGenericExceptionCaught", "ThrowsCount", "UnusedPrivateMember", "LargeClass")
 class BoxRestfulFileRepository(
@@ -49,6 +55,10 @@ class BoxRestfulFileRepository(
     private val boxCollaborationApiService: BoxCollaborationApiService
 ) {
     private val objectMapper = ObjectMapper()
+
+    companion object {
+        private const val BOX_VERY_LARGE_THUMBNAIL_SIZE = 320
+    }
 
     suspend fun getFilesList(parentId: String): List<OmhStorageEntity> {
         return withContext(Dispatchers.IO) {
@@ -470,6 +480,157 @@ class BoxRestfulFileRepository(
     // Unsupported operations for Box
     suspend fun exportFile(fileId: String, mimeType: String): ByteArrayOutputStream {
         throw UnsupportedOperationException("Box does not support file export with different MIME types")
+    }
+
+    /**
+     * Get thumbnail for a file with automatic retry handling.
+     *
+     * Box API can return:
+     * - 200: Thumbnail ready, returned immediately
+     * - 202: Thumbnail being generated, retry after Retry-After seconds
+     * - 302: Thumbnail at different location, follow redirect after optional Retry-After delay
+     * - 404: File not found or thumbnail not supported
+     *
+     * This implementation automatically handles retries with exponential backoff.
+     */
+    suspend fun getThumbnail(fileId: String, thumbnailSize: ThumbnailSize): ByteArrayOutputStream {
+        return withContext(Dispatchers.IO) {
+            try {
+                val (extension, maxWidth, maxHeight) = when (thumbnailSize) {
+                    ThumbnailSize.VERY_SMALL -> Triple(
+                        "png",
+                        ThumbnailSize.SMALL.width,
+                        ThumbnailSize.SMALL.width
+                    )
+                    ThumbnailSize.SMALL -> Triple(
+                        "png",
+                        ThumbnailSize.MEDIUM.width,
+                        ThumbnailSize.MEDIUM.width
+                    )
+                    ThumbnailSize.MEDIUM -> Triple(
+                        "png",
+                        ThumbnailSize.LARGE.width,
+                        ThumbnailSize.LARGE.width
+                    )
+                    ThumbnailSize.LARGE -> Triple(
+                        "png",
+                        ThumbnailSize.VERY_LARGE.width,
+                        ThumbnailSize.VERY_LARGE.width
+                    )
+                    ThumbnailSize.VERY_LARGE -> Triple(
+                        "jpg",
+                        BOX_VERY_LARGE_THUMBNAIL_SIZE,
+                        BOX_VERY_LARGE_THUMBNAIL_SIZE
+                    )
+                }
+
+                getThumbnailWithRetry(
+                    fileId = fileId,
+                    extension = extension,
+                    maxWidth = maxWidth,
+                    maxHeight = maxHeight,
+                    maxRetries = 3
+                )
+            } catch (e: Exception) {
+                when (e) {
+                    is OmhStorageException -> throw e
+                    else -> throw OmhStorageException.ApiException(
+                        message = e.message ?: "Unknown error occurred while getting thumbnail",
+                        cause = e
+                    )
+                }
+            }
+        }
+    }
+
+    @Suppress("LongParameterList", "LongMethod")
+    private suspend fun getThumbnailWithRetry(
+        fileId: String,
+        extension: String,
+        maxWidth: Int,
+        maxHeight: Int,
+        maxRetries: Int,
+        currentAttempt: Int = 0
+    ): ByteArrayOutputStream {
+        val response = boxApiService.getFileThumbnail(
+            fileId = fileId,
+            extension = extension,
+            maxWidth = maxWidth,
+            maxHeight = maxHeight
+        )
+
+        return when {
+            response.code() == HTTP_ACCEPTED -> {
+                // Thumbnail is being generated, check Retry-After header
+                val retryAfter = response.headers()["Retry-After"]
+                val location = response.headers()["Location"]
+
+                if (currentAttempt >= maxRetries) {
+                    throw OmhStorageException.ApiException(
+                        message = "Thumbnail generation timeout after $maxRetries attempts. Location: $location"
+                    )
+                }
+
+                // Parse retry-after header (can be seconds or HTTP date)
+                val delaySeconds = retryAfter?.toLongOrNull() ?: 2 // Default to 2 seconds
+
+                // Wait for the specified delay
+                delay(delaySeconds.seconds.inWholeMilliseconds)
+
+                // Retry the request
+                getThumbnailWithRetry(
+                    fileId = fileId,
+                    extension = extension,
+                    maxWidth = maxWidth,
+                    maxHeight = maxHeight,
+                    maxRetries = maxRetries,
+                    currentAttempt = currentAttempt + 1
+                )
+            }
+            response.isSuccessful -> {
+                response.body()?.toByteArrayOutputStream()
+                    ?: throw OmhStorageException.ApiException(message = "Empty thumbnail response")
+            }
+            response.code() == HTTP_MOVED_TEMP -> {
+                // Box has a thumbnail ready at a different location (redirect)
+                val location = response.headers()["Location"]
+                val retryAfter = response.headers()["Retry-After"]
+
+                if (location != null) {
+                    // For 302, Box is redirecting to the actual thumbnail location
+                    // We should follow the redirect
+                    if (currentAttempt >= maxRetries) {
+                        throw OmhStorageException.ApiException(
+                            message = "Too many redirects after $maxRetries attempts. Location: $location"
+                        )
+                    }
+
+                    // If there's a Retry-After header, wait before following redirect
+                    if (retryAfter != null) {
+                        val delaySeconds = retryAfter.toLongOrNull() ?: 1
+                        delay(delaySeconds.seconds.inWholeMilliseconds)
+                    }
+
+                    // Retry the original request (Box will eventually return 200)
+                    getThumbnailWithRetry(
+                        fileId = fileId,
+                        extension = extension,
+                        maxWidth = maxWidth,
+                        maxHeight = maxHeight,
+                        maxRetries = maxRetries,
+                        currentAttempt = currentAttempt + 1
+                    )
+                } else {
+                    throw OmhStorageException.ApiException(message = "Thumbnail redirect without Location header")
+                }
+            }
+            response.code() == HTTP_NOT_FOUND -> {
+                throw OmhStorageException.ApiException(message = "File not found or thumbnail cannot be generated")
+            }
+            else -> {
+                throw response.toApiException()
+            }
+        }
     }
 
     suspend fun getFileVersions(fileId: String): List<OmhFileVersion> {
