@@ -19,6 +19,7 @@ package com.openmobilehub.android.storage.sample.di
 import android.content.Context
 import com.openmobilehub.android.auth.core.OmhAuthClient
 import com.openmobilehub.android.auth.core.OmhAuthProvider
+import com.openmobilehub.android.auth.plugin.box.mobileweb.presentation.BoxMobileWebAuthClient
 import com.openmobilehub.android.auth.plugin.dropbox.DropboxAuthClient
 import com.openmobilehub.android.auth.plugin.microsoft.MicrosoftAuthClient
 import com.openmobilehub.android.storage.sample.BuildConfig
@@ -42,6 +43,7 @@ class AuthModule {
         @Named("google") googleAuthClient: Provider<OmhAuthClient>,
         dropboxAuthClient: Provider<DropboxAuthClient>,
         microsoftAuthClient: Provider<MicrosoftAuthClient>,
+        @Named("box") boxAuthClient: Provider<OmhAuthClient>,
         sessionRepository: SessionRepository
     ): OmhAuthClient {
         return when (sessionRepository.getStorageAuthProvider()) {
@@ -50,6 +52,8 @@ class AuthModule {
                 dropboxAuthClient.get()
             StorageAuthProvider.MICROSOFT, StorageAuthProvider.MICROSOFT_RESTFUL ->
                 microsoftAuthClient.get()
+            StorageAuthProvider.BOX ->
+                boxAuthClient.get()
         }
     }
 
@@ -99,5 +103,19 @@ class AuthModule {
             context = context,
             scopes = arrayListOf("User.Read", "Files.ReadWrite.All"),
         )
+    }
+
+    @Named("box")
+    @Provides
+    @Singleton
+    fun providesBoxMobileWebAuthClient(@ApplicationContext context: Context): OmhAuthClient {
+        return BoxMobileWebAuthClient.Builder(
+            clientId = BuildConfig.BOX_CLIENT_ID,
+            clientSecret = BuildConfig.BOX_CLIENT_SECRET,
+        ).also { builder ->
+            arrayListOf("root_readonly", "root_readwrite").forEach { scope ->
+                builder.addScope(scope)
+            }
+        }.build(context)
     }
 }

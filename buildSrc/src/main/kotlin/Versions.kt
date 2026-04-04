@@ -1,6 +1,6 @@
 object Versions {
     // Build Plugins
-    const val kotlin = "1.8.20"
+    const val kotlin = "1.9.21"
     const val detekt = "1.22.0"
     const val nexusPublishPlugin = "1.1.0"
     const val secretsGradlePlugin = "2.0.1"
@@ -48,7 +48,7 @@ object Versions {
     const val mockk = "1.13.4"
 
     // Auth
-    const val omhAuth = "2.0.2"
+    const val omhAuth = "2.0.4"
 
     // Play services
     const val googlePlayBase = "18.2.0"

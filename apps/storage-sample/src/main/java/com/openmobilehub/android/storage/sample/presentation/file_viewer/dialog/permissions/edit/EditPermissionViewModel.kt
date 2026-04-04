@@ -40,6 +40,7 @@ class EditPermissionViewModel @Inject constructor(
              -> OmhPermissionRole.COMMENTER
         StorageAuthProvider.MICROSOFT, StorageAuthProvider.MICROSOFT_RESTFUL
              -> OmhPermissionRole.READER
+        StorageAuthProvider.BOX -> OmhPermissionRole.READER
     }
     val disabledRoles: Set<OmhPermissionRole> = when (storageAuthProvider) {
         StorageAuthProvider.GOOGLE -> emptySet()
@@ -48,6 +49,9 @@ class EditPermissionViewModel @Inject constructor(
         )
         StorageAuthProvider.MICROSOFT, StorageAuthProvider.MICROSOFT_RESTFUL -> setOf(
             OmhPermissionRole.COMMENTER
+        )
+        StorageAuthProvider.BOX -> setOf(
+            OmhPermissionRole.COMMENTER,
         )
     }
 

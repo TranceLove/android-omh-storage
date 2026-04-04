@@ -123,6 +123,7 @@ class FileViewerViewModel @Inject constructor(
             StorageAuthProvider.GOOGLE -> true
             StorageAuthProvider.DROPBOX, StorageAuthProvider.DROPBOX_RESTFUL -> false
             StorageAuthProvider.MICROSOFT, StorageAuthProvider.MICROSOFT_RESTFUL -> false
+            StorageAuthProvider.BOX -> true
         }
 
     private val isFolderUpdateSupported: Boolean =
@@ -130,6 +131,7 @@ class FileViewerViewModel @Inject constructor(
             StorageAuthProvider.GOOGLE -> true
             StorageAuthProvider.DROPBOX, StorageAuthProvider.DROPBOX_RESTFUL -> false
             StorageAuthProvider.MICROSOFT, StorageAuthProvider.MICROSOFT_RESTFUL -> false
+            StorageAuthProvider.BOX -> false
         }
 
     init {
