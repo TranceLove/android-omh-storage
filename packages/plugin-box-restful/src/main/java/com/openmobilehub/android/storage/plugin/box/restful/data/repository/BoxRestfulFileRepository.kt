@@ -683,6 +683,52 @@ class BoxRestfulFileRepository(
         }
     }
 
+    suspend fun renameFile(fileId: String, newName: String): OmhStorageEntity {
+        return withContext(Dispatchers.IO) {
+            try {
+                val request = UpdateFileRequest(name = newName)
+                val response = boxApiService.updateFile(fileId, request)
+                if (response.isSuccessful) {
+                    response.body()?.toOmhFile()
+                        ?: throw OmhStorageException.ApiException(message = "Empty response body")
+                } else {
+                    throw response.toApiException()
+                }
+            } catch (e: Exception) {
+                when (e) {
+                    is OmhStorageException -> throw e
+                    else -> throw OmhStorageException.ApiException(
+                        message = e.message ?: "Unknown error occurred while renaming file",
+                        cause = e
+                    )
+                }
+            }
+        }
+    }
+
+    suspend fun renameFolder(folderId: String, newName: String): OmhStorageEntity {
+        return withContext(Dispatchers.IO) {
+            try {
+                val request = UpdateFolderRequest(name = newName)
+                val response = boxApiService.updateFolder(folderId, request)
+                if (response.isSuccessful) {
+                    response.body()?.toOmhFolder()
+                        ?: throw OmhStorageException.ApiException(message = "Empty response body")
+                } else {
+                    throw response.toApiException()
+                }
+            } catch (e: Exception) {
+                when (e) {
+                    is OmhStorageException -> throw e
+                    else -> throw OmhStorageException.ApiException(
+                        message = e.message ?: "Unknown error occurred while renaming folder",
+                        cause = e
+                    )
+                }
+            }
+        }
+    }
+
     suspend fun getFilePermissions(fileId: String): List<OmhPermission> {
         return withContext(Dispatchers.IO) {
             try {

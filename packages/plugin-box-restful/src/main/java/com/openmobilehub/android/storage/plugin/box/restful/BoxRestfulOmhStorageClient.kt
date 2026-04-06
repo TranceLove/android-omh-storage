@@ -114,6 +114,15 @@ class BoxRestfulOmhStorageClient(
         return fileRepository.getThumbnail(fileId, size)
     }
 
+    override suspend fun rename(id: String, newName: String): OmhStorageEntity? {
+        val node = getFileMetadata(id)
+        return when (node?.entity) {
+            is OmhStorageEntity.OmhFile -> fileRepository.renameFile(id, newName)
+            is OmhStorageEntity.OmhFolder -> fileRepository.renameFolder(id, newName)
+            else -> null
+        }
+    }
+
     override suspend fun getFileVersions(fileId: String): List<OmhFileVersion> {
         return fileRepository.getFileVersions(fileId)
     }
