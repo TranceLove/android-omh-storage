@@ -26,6 +26,7 @@ import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFileSharedMembersRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFolderRequestBody
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFolderSharedMembersRequest
+import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.MoveNodeRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.NodeMetadataRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.PathRequestBody
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.SearchFileRequest
@@ -2989,4 +2990,176 @@ class DropboxRestfulFileRepositoryTest {
                 )
             }
         }
+
+    // =========================================================================
+    // rename tests
+    // =========================================================================
+
+    @Test
+    fun `given valid file id, when rename succeeds, then returns OmhFile with new name`() = runTest {
+        val fileId = "id:testFile1"
+        val newName = "renamed_file.txt"
+
+        // testCreatedFile.path = "/test file.txt"
+        // substringBeforeLast('/') = "" → newPath = "/$newName"
+        val testFileJson = objectMapper.writeValueAsString(TestFileMetadata.testCreatedFile)
+        coEvery {
+            dropboxApiService.getNodeMetaData(eq(NodeMetadataRequest(fileId)))
+        } returns Response.success(testFileJson.toResponseBody("application/json".toMediaTypeOrNull()))
+
+        val renamedFile = TestFileMetadata.testCreatedFile.copy(name = newName, path = "/$newName")
+        val renamedFileJson = objectMapper.writeValueAsString(renamedFile)
+        coEvery {
+            dropboxApiService.move(any<MoveNodeRequest>())
+        } returns Response.success(renamedFileJson.toResponseBody("application/json".toMediaTypeOrNull()))
+
+        val result = fileRepositoryImpl.rename(fileId, newName)
+
+        assertNotNull(result)
+        assertTrue(result is OmhStorageEntity.OmhFile)
+        assertEquals(newName, result?.name)
+        coVerify(exactly = 1) {
+            dropboxApiService.getNodeMetaData(eq(NodeMetadataRequest(fileId)))
+        }
+        coVerify(exactly = 1) {
+            dropboxApiService.move(
+                withArg { req ->
+                    assertEquals(TestFileMetadata.testCreatedFile.path, req.fromPath)
+                    assertEquals("/$newName", req.toPath)
+                }
+            )
+        }
+    }
+
+    @Test
+    fun `given valid folder id, when rename succeeds, then returns OmhFolder with new name`() = runTest {
+        val folderId = "id:testFolder1"
+        val newName = "Renamed Folder"
+
+        // testFolder.path = "/new folder" → substringBeforeLast('/') = "" → newPath = "/Renamed Folder"
+        val testFolderJson = objectMapper.writeValueAsString(TestFolderMetadata.testFolder)
+        coEvery {
+            dropboxApiService.getNodeMetaData(eq(NodeMetadataRequest(folderId)))
+        } returns Response.success(testFolderJson.toResponseBody("application/json".toMediaTypeOrNull()))
+
+        val renamedFolder = TestFolderMetadata.testFolder.copy(name = newName, path = "/$newName")
+        val renamedFolderJson = objectMapper.writeValueAsString(renamedFolder)
+        coEvery {
+            dropboxApiService.move(any<MoveNodeRequest>())
+        } returns Response.success(renamedFolderJson.toResponseBody("application/json".toMediaTypeOrNull()))
+
+        val result = fileRepositoryImpl.rename(folderId, newName)
+
+        assertNotNull(result)
+        assertTrue(result is OmhStorageEntity.OmhFolder)
+        assertEquals(newName, result?.name)
+        coVerify(exactly = 1) {
+            dropboxApiService.move(
+                withArg { req ->
+                    assertEquals(TestFolderMetadata.testFolder.path, req.fromPath)
+                    assertEquals("/$newName", req.toPath)
+                }
+            )
+        }
+    }
+
+    @Test
+    fun `given file in subdirectory, when rename, then move toPath preserves parent directory`() = runTest {
+        val fileId = "id:subfolder-file"
+        val newName = "new_name.txt"
+
+        // File lives at /docs/old_name.txt → parent = "/docs" → toPath = "/docs/new_name.txt"
+        val deepFile = TestFileMetadata.testCreatedFile.copy(
+            id = fileId,
+            name = "old_name.txt",
+            path = "/docs/old_name.txt"
+        )
+        coEvery {
+            dropboxApiService.getNodeMetaData(eq(NodeMetadataRequest(fileId)))
+        } returns Response.success(
+            objectMapper.writeValueAsString(deepFile).toResponseBody("application/json".toMediaTypeOrNull())
+        )
+
+        val renamedFile = deepFile.copy(name = newName, path = "/docs/$newName")
+        coEvery {
+            dropboxApiService.move(any<MoveNodeRequest>())
+        } returns Response.success(
+            objectMapper.writeValueAsString(renamedFile).toResponseBody("application/json".toMediaTypeOrNull())
+        )
+
+        fileRepositoryImpl.rename(fileId, newName)
+
+        coVerify(exactly = 1) {
+            dropboxApiService.move(
+                withArg { req ->
+                    assertEquals("/docs/old_name.txt", req.fromPath)
+                    assertEquals("/docs/$newName", req.toPath)
+                    assertEquals(false, req.autoRename)
+                }
+            )
+        }
+    }
+
+    @Test
+    fun `given node not found, when rename called, then throws ApiException with 404`() = runTest {
+        val fileId = "id:nonExistentFile"
+        coEvery {
+            dropboxApiService.getNodeMetaData(any())
+        } returns Response.success(null)
+
+        try {
+            fileRepositoryImpl.rename(fileId, "new_name.txt")
+            fail("Expected ApiException to be thrown")
+        } catch (e: OmhStorageException.ApiException) {
+            assertEquals(404, e.statusCode)
+            assertEquals("Node not found", e.message)
+        }
+
+        coVerify(exactly = 1) {
+            dropboxApiService.getNodeMetaData(eq(NodeMetadataRequest(fileId)))
+        }
+        coVerify(exactly = 0) { dropboxApiService.move(any()) }
+    }
+
+    @Test
+    fun `given move API returns error, when rename called, then throws ApiException`() = runTest {
+        val fileId = "id:testFile1"
+        coEvery {
+            dropboxApiService.getNodeMetaData(any())
+        } returns Response.success(
+            objectMapper.writeValueAsString(TestFileMetadata.testCreatedFile)
+                .toResponseBody("application/json".toMediaTypeOrNull())
+        )
+        coEvery {
+            dropboxApiService.move(any<MoveNodeRequest>())
+        } returns Response.error(409, "Conflict".toResponseBody("text/plain".toMediaTypeOrNull()))
+
+        try {
+            fileRepositoryImpl.rename(fileId, "new_name.txt")
+            fail("Expected ApiException to be thrown")
+        } catch (expected: OmhStorageException.ApiException) {
+            // expected
+        }
+
+        coVerify(exactly = 1) { dropboxApiService.move(any()) }
+    }
+
+    @Test
+    fun `given move returns null body, when rename called, then returns null`() = runTest {
+        val fileId = "id:testFile1"
+        coEvery {
+            dropboxApiService.getNodeMetaData(any())
+        } returns Response.success(
+            objectMapper.writeValueAsString(TestFileMetadata.testCreatedFile)
+                .toResponseBody("application/json".toMediaTypeOrNull())
+        )
+        coEvery {
+            dropboxApiService.move(any<MoveNodeRequest>())
+        } returns Response.success(null)
+
+        val result = fileRepositoryImpl.rename(fileId, "new_name.txt")
+
+        assertEquals(null, result)
+        coVerify(exactly = 1) { dropboxApiService.move(any()) }
+    }
 }

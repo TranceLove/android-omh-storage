@@ -11,6 +11,7 @@ import com.openmobilehub.android.storage.core.model.OmhStorageEntity
 import com.openmobilehub.android.storage.core.model.OmhStorageException
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.OneDriveApiService
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.body.CreatePermissionRequestBody
+import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.body.RenameItemRequestBody
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.body.UpdatePermissionRequestBody
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.response.DriveItem
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.response.GrantedToV2
@@ -18,6 +19,7 @@ import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.res
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.response.ItemReference
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.response.PermissionResponse
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.response.PermissionsListResponse
+import com.openmobilehub.android.storage.plugin.onedrive.restful.testdoubles.TestDriveItem
 import com.openmobilehub.android.storage.plugin.onedrive.restful.testdoubles.TestListFolderResponse
 import com.openmobilehub.android.storage.plugin.onedrive.restful.testdoubles.TestListFolderResponse.paginatedFirstPage
 import com.openmobilehub.android.storage.plugin.onedrive.restful.testdoubles.TestListFolderResponse.paginatedSecondPage
@@ -885,4 +887,100 @@ class OneDriveRestfulFileRepositoryTest {
             assertEquals(expectedResult.size, result.size())
             coVerify { apiService.getItemThumbnails("testFile1") }
         }
+
+    // =========================================================================
+    // rename tests
+    // =========================================================================
+
+    @Test
+    fun `given valid item id, when renameItem returns file DriveItem, then returns OmhFile with new name`() = runTest {
+        // Arrange
+        val itemId = "ITEM_RENAME_1"
+        val newName = "renamed-file.txt"
+        val fileItem = TestDriveItem.file(id = itemId, name = newName)
+        val bodySlot = slot<RenameItemRequestBody>()
+        coEvery {
+            apiService.renameItem(itemId, capture(bodySlot))
+        } returns Response.success(fileItem)
+
+        // Act
+        val result = repository.rename(itemId, newName)
+
+        // Assert
+        assertTrue(result is OmhStorageEntity.OmhFile)
+        assertEquals(newName, result?.name)
+        assertEquals(itemId, result?.id)
+        assertEquals(newName, bodySlot.captured.name)
+    }
+
+    @Test
+    fun `given valid item id, when renameItem returns folder DriveItem, then returns OmhFolder with new name`() =
+        runTest {
+            // Arrange
+            val itemId = "ITEM_RENAME_2"
+            val newName = "Renamed Folder"
+            val folderItem = TestDriveItem.folder(id = itemId, name = newName)
+            val bodySlot = slot<RenameItemRequestBody>()
+            coEvery {
+                apiService.renameItem(itemId, capture(bodySlot))
+            } returns Response.success(folderItem)
+
+            // Act
+            val result = repository.rename(itemId, newName)
+
+            // Assert
+            assertTrue(result is OmhStorageEntity.OmhFolder)
+            assertEquals(newName, result?.name)
+            assertEquals(itemId, result?.id)
+            assertEquals(newName, bodySlot.captured.name)
+        }
+
+    @Test
+    fun `given rename request, when renameItem sends correct body, then name field matches`() = runTest {
+        // Arrange
+        val itemId = "ITEM_RENAME_3"
+        val newName = "exact-new-name.docx"
+        val bodySlot = slot<RenameItemRequestBody>()
+        coEvery {
+            apiService.renameItem(itemId, capture(bodySlot))
+        } returns Response.success(TestDriveItem.file(id = itemId, name = newName))
+
+        // Act
+        repository.rename(itemId, newName)
+
+        // Assert: verify the request body contains exactly the new name
+        assertEquals(newName, bodySlot.captured.name)
+        coVerify(exactly = 1) { apiService.renameItem(eq(itemId), any()) }
+    }
+
+    @Test(expected = OmhStorageException.ApiException::class)
+    fun `given api error, when rename called, then throws ApiException`() = runTest {
+        // Arrange
+        val itemId = "ITEM_RENAME_ERR"
+        coEvery {
+            apiService.renameItem(itemId, any())
+        } returns Response.error(
+            400,
+            "bad request".toResponseBody("application/json".toMediaType())
+        )
+
+        // Act
+        repository.rename(itemId, "new-name.txt")
+    }
+
+    @Test
+    fun `given renameItem returns null body, when rename called, then returns null`() = runTest {
+        // Arrange
+        val itemId = "ITEM_RENAME_NULL"
+        coEvery {
+            apiService.renameItem(itemId, any())
+        } returns Response.success(null)
+
+        // Act
+        val result = repository.rename(itemId, "new-name.txt")
+
+        // Assert
+        assertEquals(null, result)
+        coVerify(exactly = 1) { apiService.renameItem(eq(itemId), any()) }
+    }
 }

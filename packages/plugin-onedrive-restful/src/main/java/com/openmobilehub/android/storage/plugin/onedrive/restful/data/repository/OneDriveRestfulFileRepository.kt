@@ -19,6 +19,7 @@ import com.openmobilehub.android.storage.plugin.onedrive.restful.data.OneDriveAp
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.OneDriveApiService.Companion.DRIVE
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.OneDriveApiService.Companion.ROOT
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.body.CreateFolderRequestBody
+import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.body.RenameItemRequestBody
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.mapper.toOmhPermissions
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.mapper.toOmhStorageEntity
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.mapper.toOneDriveInviteBody
@@ -281,6 +282,12 @@ internal class OneDriveRestfulFileRepository(
             ThumbnailSize.LARGE -> "large"
             ThumbnailSize.VERY_LARGE -> "large"
         }
+    }
+
+    suspend fun rename(id: String, newName: String): OmhStorageEntity? {
+        val response = apiService.renameItem(id, RenameItemRequestBody(newName))
+        if (response.isNotSuccessful) throw response.toApiException()
+        return response.body()?.toOmhStorageEntity()
     }
 
     suspend fun getNodeMetaDataById(id: String): DriveItem? {

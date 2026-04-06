@@ -14,6 +14,7 @@ import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFileSharedMembersRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFolderRequestBody
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFolderSharedMembersRequest
+import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.MoveNodeRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.NodeMetadataRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.PathRequestBody
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.SearchFileRequest
@@ -44,6 +45,7 @@ internal interface DropboxApiService {
         private const val CONTINUE = "continue"
 
         private const val CREATE_FOLDER = "create_folder_v2"
+        private const val MOVE_FILE = "move_v2"
         private const val LIST_FOLDER = "list_folder"
         private const val DELETE = "delete"
         private const val PERMANENT_DELETE = "permanently_delete"
@@ -106,6 +108,11 @@ internal interface DropboxApiService {
 
     @POST("$FILES/$PERMANENT_DELETE")
     suspend fun permanentlyDeleteFile(@Body body: PathRequestBody): Response<Unit>
+
+    @POST("$FILES/$MOVE_FILE")
+    suspend fun move(
+        @Body body: MoveNodeRequest,
+    ): Response<ResponseBody>
 
     @POST("$FILES/$GET_USER_INFO")
     suspend fun getCurrentAccount(): Response<CurrentUserAccountResponse>

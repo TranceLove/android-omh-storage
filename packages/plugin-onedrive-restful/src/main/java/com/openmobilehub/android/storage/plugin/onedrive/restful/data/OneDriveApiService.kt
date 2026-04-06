@@ -2,6 +2,7 @@ package com.openmobilehub.android.storage.plugin.onedrive.restful.data
 
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.body.CreateFolderRequestBody
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.body.CreatePermissionRequestBody
+import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.body.RenameItemRequestBody
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.body.UpdatePermissionRequestBody
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.response.Drive
 import com.openmobilehub.android.storage.plugin.onedrive.restful.data.source.response.DriveItem
@@ -140,6 +141,12 @@ interface OneDriveApiService {
         @Path(ITEM_ID) itemId: String,
         @Path(VERSION_ID) versionId: String,
     ): Response<ResponseBody>
+
+    @PATCH("$V1/$DRIVE/$ITEMS/{$ITEM_ID}")
+    suspend fun renameItem(
+        @Path(ITEM_ID) itemId: String,
+        @Body requestBody: RenameItemRequestBody,
+    ): Response<DriveItem>
 
     // Permissions
     @GET("$V1/$DRIVE/$ITEMS/{$ITEM_ID}/$PERMISSIONS")

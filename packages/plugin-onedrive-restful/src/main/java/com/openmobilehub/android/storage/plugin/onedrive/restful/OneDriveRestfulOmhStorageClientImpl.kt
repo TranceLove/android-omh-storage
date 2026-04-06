@@ -94,6 +94,10 @@ internal class OneDriveRestfulOmhStorageClientImpl(
         return repository.downloadVersion(fileId, versionId)
     }
 
+    override suspend fun rename(id: String, newName: String): OmhStorageEntity? {
+        return repository.rename(id, newName)
+    }
+
     override suspend fun getFileMetadata(fileId: String): OmhStorageMetadata? {
         return repository.getNodeMetaDataById(fileId)?.toOmhStorageMetadata()
     }

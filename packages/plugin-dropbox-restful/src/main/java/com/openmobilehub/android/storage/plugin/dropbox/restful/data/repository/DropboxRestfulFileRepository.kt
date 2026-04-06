@@ -33,6 +33,7 @@ import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFileSharedMembersRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFolderRequestBody
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.ListFolderSharedMembersRequest
+import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.MoveNodeRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.NodeMetadataRequest
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.PathRequestBody
 import com.openmobilehub.android.storage.plugin.dropbox.restful.data.source.body.SearchFileRequest
@@ -142,6 +143,36 @@ internal class DropboxRestfulFileRepository(
         val response = apiService.permanentlyDeleteFile(PathRequestBody(fileId))
         return if (response.isSuccessful) {
             true
+        } else {
+            throw response.toApiException()
+        }
+    }
+
+    suspend fun rename(
+        id: String,
+        newName: String
+    ): OmhStorageEntity? {
+        val nodeMetadata = getNodeMetadata(id = id) ?: throw OmhStorageException.ApiException(
+            404,
+            "Node not found",
+            null,
+        )
+        val newPath = nodeMetadata.path.substringBeforeLast('/') + "/$newName"
+        val response = apiService.move(
+            MoveNodeRequest(
+                fromPath = nodeMetadata.path,
+                toPath = newPath
+            )
+        )
+        return if (response.isSuccessful) {
+            val metadata = response.body()?.string()?.let {
+                jsonToNodeMetadata(JSONObject(it).getJSONObject("metadata"))
+            }
+            when (metadata) {
+                is FileMetadata -> metadata.toOmhFile(parentId = "")
+                is FolderMetadata -> metadata.toOmhFolder(parentId = "")
+                else -> null
+            }
         } else {
             throw response.toApiException()
         }
@@ -735,7 +766,7 @@ internal class DropboxRestfulFileRepository(
         val metadata = json.getJSONObject("metadata").getJSONObject("metadata")
         return jsonToNodeMetadataInternal(
             metadata,
-            metadata.getString(".tag")
+            metadata.getString(NodeMetadata.ATTR_TAG)
         )
     }
 

@@ -102,6 +102,10 @@ internal class DropboxRestfulOmhStorageClient(
         return fileRepository.downloadFileVersion(fileId, versionId)
     }
 
+    override suspend fun rename(id: String, newName: String): OmhStorageEntity? {
+        return fileRepository.rename(id, newName)
+    }
+
     override suspend fun getFileMetadata(fileId: String): OmhStorageMetadata? {
         return fileRepository.getFileMetadata(fileId)
     }
