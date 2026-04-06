@@ -207,11 +207,13 @@ class FileViewerViewModel @Inject constructor(
             )
 
             is FileViewerViewEvent.PermanentlyDeleteFile -> permanentlyDeleteFileEvent(event)
+            is FileViewerViewEvent.RenameFile -> renameFile(event)
             is FileViewerViewEvent.UploadFile -> uploadFile(event)
             is FileViewerViewEvent.UpdateFile -> updateFileEvent(event)
             is FileViewerViewEvent.SignOut -> signOut()
             is FileViewerViewEvent.DownloadFile -> downloadFileEvent()
             is FileViewerViewEvent.SaveFileResult -> saveFileResultEvent(event)
+            is FileViewerViewEvent.RenameFileClicked -> onRename(event)
             is FileViewerViewEvent.UpdateFileClicked -> updateFileClickEvent(event)
             is FileViewerViewEvent.UpdateSearchQuery -> updateSearchQuery(event)
             is FileViewerViewEvent.FileMetadataClicked -> onFileMetadata(event)
@@ -312,6 +314,23 @@ class FileViewerViewModel @Inject constructor(
             toastMessage.postValue("The file was NOT downloaded")
             refreshFileListEvent()
             lastFileVersionClicked = null
+        }
+    }
+
+    private fun renameFile(event: FileViewerViewEvent.RenameFile) {
+        setState(FileViewerViewState.Loading)
+
+        val file = event.file
+        val newName = event.newName
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                omhStorageClient.rename(file.id, newName)
+                toastMessage.postValue("${file.name} was successfully renamed to $newName")
+            } catch (exception: Exception) {
+                handleException(exception, "ERROR: Cannot rename ${file.name}")
+            }
+            refreshFileListEvent()
         }
     }
 
@@ -547,6 +566,13 @@ class FileViewerViewModel @Inject constructor(
             folderSize.postValue(-1L)
             val size = omhStorageClient.folderSize(event.folder.id)
             folderSize.postValue(size)
+        }
+    }
+
+    private fun onRename(event: FileViewerViewEvent.RenameFileClicked) {
+        lastFileClicked = event.file
+        viewModelScope.launch {
+            _action.send(FileViewerViewAction.ShowRename)
         }
     }
 

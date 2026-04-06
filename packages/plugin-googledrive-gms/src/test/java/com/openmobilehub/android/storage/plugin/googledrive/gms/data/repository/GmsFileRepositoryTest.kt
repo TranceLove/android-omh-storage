@@ -798,4 +798,27 @@ internal class GmsFileRepositoryTest {
 
             fileRepositoryImpl.getFileThumbnail(TEST_FILE_ID, ThumbnailSize.MEDIUM)
         }
+
+    @Test
+    fun `Test renaming a file`() {
+        // Given
+        val newFileName = "renamed_file.txt"
+        val renamedFile = googleDriveFile
+        every { renamedFile.name } returns newFileName
+
+        every { driveFilesUpdateRequest.execute() } returns renamedFile
+        every { apiService.updateFile(any(), any()) } returns driveFilesUpdateRequest
+
+        // When
+        val result = fileRepositoryImpl.rename(TEST_FILE_ID, newFileName)
+
+        // Then
+        assertEquals(newFileName, result?.name)
+        verify {
+            apiService.updateFile(
+                TEST_FILE_ID,
+                match { file -> file.name == newFileName }
+            )
+        }
+    }
 }

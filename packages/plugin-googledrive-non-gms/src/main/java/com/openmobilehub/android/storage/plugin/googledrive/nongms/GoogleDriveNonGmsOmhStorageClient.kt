@@ -110,6 +110,10 @@ internal class GoogleDriveNonGmsOmhStorageClient private constructor(
         return fileRepository.getFileThumbnail(fileId, size)
     }
 
+    override suspend fun rename(id: String, newName: String): OmhStorageEntity? {
+        return fileRepository.rename(id, newName)
+    }
+
     override suspend fun updateFile(
         localFileToUpload: File,
         fileId: String

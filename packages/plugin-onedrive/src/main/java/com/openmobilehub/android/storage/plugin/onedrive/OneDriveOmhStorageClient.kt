@@ -131,6 +131,10 @@ internal class OneDriveOmhStorageClient @VisibleForTesting internal constructor(
         return repository.getFileThumbnail(fileId, size)
     }
 
+    override suspend fun rename(id: String, newName: String): OmhStorageEntity? {
+        return repository.rename(id, newName)
+    }
+
     override suspend fun updateFile(
         localFileToUpload: File,
         fileId: String

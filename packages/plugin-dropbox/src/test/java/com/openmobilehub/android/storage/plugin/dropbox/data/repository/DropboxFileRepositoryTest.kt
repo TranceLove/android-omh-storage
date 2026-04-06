@@ -1194,4 +1194,19 @@ class DropboxFileRepositoryTest {
 
             verify { apiService.getThumbnail(TEST_FILE_ID, "w256h256") }
         }
+
+    @Test
+    fun `Test renaming a file`() {
+        // Arrange
+        val newName = "renamed_file.txt"
+        every { omhStorageEntity.name } returns newName
+        every { repository.rename(TEST_FILE_ID, newName) } returns omhStorageEntity
+
+        // Act
+        val result = repository.rename(TEST_FILE_ID, newName)
+
+        // Assert
+        assertEquals(omhStorageEntity, result)
+        verify { repository.rename(TEST_FILE_ID, newName) }
+    }
 }
