@@ -36,7 +36,7 @@ interface BoxApiService {
         @Path("folder_id") folderId: String,
         @Query("limit") limit: Int? = null,
         @Query("offset") offset: Int? = null,
-        @Query("fields") fields: String? = null
+        @Query("fields") fields: String = "id,type,name,created_at,modified_at,parent,size",
     ): Response<FolderItemsResponse>
 
     @POST("folders")
