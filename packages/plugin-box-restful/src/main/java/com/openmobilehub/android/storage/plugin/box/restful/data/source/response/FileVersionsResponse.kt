@@ -1,7 +1,11 @@
 package com.openmobilehub.android.storage.plugin.box.restful.data.source.response
 
+import androidx.annotation.Keep
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 
+@Keep
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class FileVersionsResponse(
     @JsonProperty("entries")
     val entries: List<BoxFileVersion>,
@@ -15,6 +19,8 @@ data class FileVersionsResponse(
     val order: List<BoxOrderBy>?
 )
 
+@Keep
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class BoxOrderBy(
     @JsonProperty("by")
     val by: String,

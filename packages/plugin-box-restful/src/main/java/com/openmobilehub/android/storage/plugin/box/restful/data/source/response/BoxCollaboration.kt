@@ -1,7 +1,11 @@
 package com.openmobilehub.android.storage.plugin.box.restful.data.source.response
 
+import androidx.annotation.Keep
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 
+@Keep
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class BoxCollaboration(
     @JsonProperty("id")
     val id: String,
@@ -31,6 +35,8 @@ data class BoxCollaboration(
     val status: String
 )
 
+@Keep
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class BoxCollaborator(
     @JsonProperty("id")
     val id: String,
@@ -42,6 +48,8 @@ data class BoxCollaborator(
     val login: String?
 )
 
+@Keep
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class BoxCollaborationItem(
     @JsonProperty("id")
     val id: String,

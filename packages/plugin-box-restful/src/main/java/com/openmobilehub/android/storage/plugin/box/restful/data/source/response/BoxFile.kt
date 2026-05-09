@@ -1,7 +1,11 @@
 package com.openmobilehub.android.storage.plugin.box.restful.data.source.response
 
+import androidx.annotation.Keep
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 
+@Keep
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class BoxFile(
     @JsonProperty("id")
     val id: String,
@@ -37,6 +41,8 @@ data class BoxFile(
     val sha1: String? = null
 )
 
+@Keep
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class BoxParent(
     @JsonProperty("id")
     val id: String,
@@ -46,6 +52,8 @@ data class BoxParent(
     val name: String? = null
 )
 
+@Keep
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class BoxPathCollection(
     @JsonProperty("total_count")
     val totalCount: Int,
@@ -53,6 +61,8 @@ data class BoxPathCollection(
     val entries: List<BoxParent>
 )
 
+@Keep
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class BoxSharedLink(
     @JsonProperty("url")
     val url: String,
@@ -80,6 +90,8 @@ data class BoxSharedLink(
     val previewCount: Int
 )
 
+@Keep
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class BoxPermissions(
     @JsonProperty("can_download")
     val canDownload: Boolean,
