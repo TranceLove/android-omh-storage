@@ -3011,7 +3011,9 @@ class DropboxRestfulFileRepositoryTest {
         val renamedFileJson = objectMapper.writeValueAsString(renamedFile)
         coEvery {
             dropboxApiService.move(any<MoveNodeRequest>())
-        } returns Response.success(renamedFileJson.toResponseBody("application/json".toMediaTypeOrNull()))
+        } returns Response.success(
+            "{\"metadata\":$renamedFileJson}".toResponseBody("application/json".toMediaTypeOrNull())
+        )
 
         val result = fileRepositoryImpl.rename(fileId, newName)
 
@@ -3046,7 +3048,9 @@ class DropboxRestfulFileRepositoryTest {
         val renamedFolderJson = objectMapper.writeValueAsString(renamedFolder)
         coEvery {
             dropboxApiService.move(any<MoveNodeRequest>())
-        } returns Response.success(renamedFolderJson.toResponseBody("application/json".toMediaTypeOrNull()))
+        } returns Response.success(
+            "{\"metadata\":$renamedFolderJson}".toResponseBody("application/json".toMediaTypeOrNull())
+        )
 
         val result = fileRepositoryImpl.rename(folderId, newName)
 
@@ -3084,7 +3088,9 @@ class DropboxRestfulFileRepositoryTest {
         coEvery {
             dropboxApiService.move(any<MoveNodeRequest>())
         } returns Response.success(
-            objectMapper.writeValueAsString(renamedFile).toResponseBody("application/json".toMediaTypeOrNull())
+            "{\"metadata\":${objectMapper.writeValueAsString(renamedFile)}}".toResponseBody(
+                "application/json".toMediaTypeOrNull()
+            )
         )
 
         fileRepositoryImpl.rename(fileId, newName)

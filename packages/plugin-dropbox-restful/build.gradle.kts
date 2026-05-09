@@ -16,6 +16,7 @@ android {
             name = "DROPBOX_CONTENT_API_URL",
             value = getRequiredValueFromEnvOrProperties("dropboxContentApiUrl"),
         )
+        manifestPlaceholders["googleClientIdForRedirect"] = ""
     }
 
     testOptions {

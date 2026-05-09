@@ -11,6 +11,7 @@ android {
             name = "MSGRAPH_API_URL",
             value = getRequiredValueFromEnvOrProperties("msGraphApiUrl"),
         )
+        manifestPlaceholders["googleClientIdForRedirect"] = ""
     }
 
     testOptions {

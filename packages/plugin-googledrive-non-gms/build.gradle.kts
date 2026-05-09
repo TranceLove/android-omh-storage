@@ -11,6 +11,7 @@ android {
             name = "G_STORAGE_URL",
             value = getRequiredValueFromEnvOrProperties("googleStorageUrl")
         )
+        manifestPlaceholders["googleClientIdForRedirect"] = ""
     }
 
     testOptions {

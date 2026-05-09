@@ -16,6 +16,7 @@ android {
             name = "BOX_UPLOAD_API_URL",
             value = getRequiredValueFromEnvOrProperties("boxUploadApiUrl"),
         )
+        manifestPlaceholders["googleClientIdForRedirect"] = ""
     }
 
     testOptions {
